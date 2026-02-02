@@ -76,6 +76,7 @@ void BaseNavigator::initialize(ros::NodeHandle nh, ros::NodeHandle nhp,
   flight_state_pub_ = nh_.advertise<std_msgs::UInt8>("flight_state", 1);
   path_pub_ = nh_.advertise<nav_msgs::Path>("trajectory", 1);
   waypoint_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("waypoints", 1);
+  servo_control_pub = nh_.advertise<spinal::ServoControlCmd>("extra_servo_cmd", 1);
 
   estimate_mode_ = estimator_->getEstimateMode();
   force_landing_start_time_ = ros::Time::now();
@@ -178,7 +179,7 @@ void BaseNavigator::simpleMoveBaseGoalCallback(const geometry_msgs::PoseStampedC
       ROS_DEBUG("traj_generator_ptr_ is null");
     }
   geometry_msgs::PoseStamped target_pose = *msg;
-  target_pose.pose.position.z = getTargetPos().z();
+  // target_pose.pose.position.z = getTargetPos().z();
   std::vector<geometry_msgs::PoseStamped> path;
   path.push_back(target_pose);
   generateNewTrajectory(path);
@@ -1105,6 +1106,11 @@ void BaseNavigator::rosParamInit()
     ROS_WARN("land_check_duration_ (current value: %f) should be not smaller than 0.5", land_check_duration_);
     land_check_duration_ = 0.5;
   }
+
+  getParam<int>(nh, "initial_servo_angle/1", servo_angle_1, 90);
+  getParam<int>(nh, "initial_servo_angle/2", servo_angle_2, 90);
+  getParam<int>(nh, "initial_servo_angle/3", servo_angle_3, 90);
+  getParam<int>(nh, "initial_servo_angle/4", servo_angle_4, 90);
 
   getParam<double>(nh, "trajectory_reset_duration", trajectory_reset_duration_, 0.5);
   getParam<double>(nh, "teleop_reset_duration", teleop_reset_duration_, 0.5);

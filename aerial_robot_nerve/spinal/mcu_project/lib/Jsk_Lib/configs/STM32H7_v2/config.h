@@ -50,9 +50,13 @@
 #define SERVO_FLAG 1
 #define DYNAMIXEL 1
 #define KONDO 0
+//2.1.3.1 Dynamixel Servo Control without external convertor board
+#define DYNAMIXEL_BOARDLESS_CONTROL 0
 //2.2 State Estimate
 //2.2.1 Attitude Estimate
 #define ATTITUDE_ESTIMATE_FLAG 1
+//2.3
+#define PWM_SERVO_FLAG 1
 //* Do not change following code!!!
 ///////////////////////////////////
 #if !IMU_FLAG
