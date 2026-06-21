@@ -151,6 +151,7 @@ include_directories(
 add_library(radxa_hw
   src/pwm_driver.cpp
   src/i2c_driver.cpp
+  src/radxa_board_io.cpp
   )
 
 target_link_libraries(radxa_hw
