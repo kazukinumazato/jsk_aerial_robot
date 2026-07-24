@@ -35,6 +35,8 @@ namespace radxa
     RadxaBoardIo();
     ~RadxaBoardIo() override = default;
 
+    bool Init();
+
     bool getVoltage(float& voltage) override;
     bool readImu(ImuRaw& data) override;
     bool setMotorPwms(const float* pwms, int motor_number) override;

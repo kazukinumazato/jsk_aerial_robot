@@ -84,7 +84,7 @@ public:
 #ifdef SIMULATION
   void init(ros::NodeHandle* nh, StateEstimate* estimator);
 #else
-  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator,
+  void init(RadxaBoardIo* board_io, StateEstimate* estimator,
             DShot* dshot, DirectServo* servo, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL);
 #endif
 
@@ -114,15 +114,12 @@ public:
 private:
 
 #ifndef SIMULATION
-  TIM_HandleTypeDef* pwm_htim1_;
-  TIM_HandleTypeDef* pwm_htim2_;
+  RadxaBoardIo board_io_;
 #endif
 
   ros::NodeHandle* nh_;
   ros::Publisher pwms_pub_;
   ros::Publisher control_term_pub_;
-                                        
-  motor_number_ = 0;
   ros::Publisher control_feedback_state_pub_;
   spinal::Pwms pwms_msg_;
   spinal::RollPitchYawTerms control_term_msg_;

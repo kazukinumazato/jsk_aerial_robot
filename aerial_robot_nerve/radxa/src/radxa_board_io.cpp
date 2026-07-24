@@ -17,11 +17,27 @@ namespace radxa
 		  {20, 2},
 		  {20, 3}}),
      i2c("/dev/i2c-7")
+  {}
+  
+  RadxaBoardIo::~RadxaBoardIo() override
   {
-    for (PwmConfig config : pwm_configs)
+    i2c.close();
+    for (pwm : pwm_drivers_){
+      pwm->disable();
+      pwm->close();
+    }
+  }
+
+  bool RadxaBoardIo::Init()
+  {
+   for (PwmConfig config : pwm_configs)
       {
 	PwmDriver pwm(config.pwm_chip, config.pwm_channel, pwm_freq);
-	pwm.open();
+	if(!pwm.open()){
+	  std::cerr << "fail to open pwm chip: " << config.pwm_chip
+		    << " channel: " << config.pwm_channel;
+	  return false;
+	}
 	pwm.setPulseWidthUs(0);
 	pwm.enable();
 	pwm_drivers_.push_back(std::unique_ptr<PwmDriver>(pwm));
@@ -46,26 +62,15 @@ namespace radxa
       return false;
     }
 
-    std::cout << "IMU wake up command sent" << std::endl;
-
-    
-  }
-  
-  RadxaBoardIo::~RadxaBoardIo() override
-  {
-    i2c.close();
-    for (pwm : pwm_drivers_){
-      pwm->disable();
-      pwm->close();
-    }
+    std::cout << "IMU wake up command sent" << std::endl; 
   }
 
-  RadxaBoardIo::getVoltage(float& voltage){
+  bool RadxaBoardIo::getVoltage(float& voltage){
     // added later
     std::cout << voltage;
   }
 
-  RadxaBoardIo::readImu(ImuRaw& data) override {
+  bool RadxaBoardIo::readImu(ImuRaw& data) override {
     // read acc
     uint8_t raw_acc[6];
     if(!i2c.writeRead(imu, &accel_reg, 1, raw_acc, 6)){
@@ -89,7 +94,7 @@ namespace radxa
     return true;
   }
 
-  RadxaBoardIo::setMotorPwms(const float* pwms, int motor_number) override {
+  bool RadxaBoardIo::setMotorPwms(const float* pwms, int motor_number) override {
     for (int i = 0; int < motor_number; i++){
       if(!pwm_drivers_[i]->setPulseWidthUs(pwms[i] / pwm_freq * 1000000)){
 	std::cerr << "fail to set pulse width: pwm" << i;

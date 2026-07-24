@@ -57,20 +57,20 @@ def pick_disable_mode():
     return None
 
 
-def main():yaw_rate
+def main():
     rospy.init_node("sin_rp_const_yaw_2rev_reset")
 
     rate_hz = float(rospy.get_param("~rate_hz", 100.0))
 
     # roll params
-    roll_min    = float(rospy.get_param("~roll_min", -0.25))
-    roll_max    = float(rospy.get_param("~roll_max",  0.25))
+    roll_min    = float(rospy.get_param("~roll_min", -0.3))
+    roll_max    = float(rospy.get_param("~roll_max",  0.3))
     roll_period = float(rospy.get_param("~roll_period", 30.0))
     roll_phase  = float(rospy.get_param("~roll_phase", 0.0))
 
     # pitch params
-    pitch_min    = float(rospy.get_param("~pitch_min", -0.25))
-    pitch_max    = float(rospy.get_param("~pitch_max",  0.25))
+    pitch_min    = float(rospy.get_param("~pitch_min", -0.3))
+    pitch_max    = float(rospy.get_param("~pitch_max",  0.3))
     pitch_period = float(rospy.get_param("~pitch_period", 20.0))
     pitch_phase  = float(rospy.get_param("~pitch_phase", 0.0))
 
