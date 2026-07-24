@@ -12,23 +12,12 @@
 
 #include <stdbool.h>
 #include <cstdint>
-#include <math.h>  // lrintf
 #include "esc_telem.h"
 
-/* User Configuration */
-// Timer Clock
-#define TIMER_CLOCK 100000000  // 100MHz
-
-/* Definition */
-#define MHZ_TO_HZ(x) ((x) * 1000000)
-
-#define DSHOT600_HZ MHZ_TO_HZ(12)
-#define DSHOT300_HZ MHZ_TO_HZ(6)
-#define DSHOT150_HZ MHZ_TO_HZ(3)
-
-#define MOTOR_BIT_0 7
-#define MOTOR_BIT_1 14
-#define MOTOR_BITLENGTH 20
+/* DShot wire bit rates. */
+#define DSHOT600_HZ 600000U
+#define DSHOT300_HZ 300000U
+#define DSHOT150_HZ 150000U
 
 #define DSHOT_FRAME_SIZE 16
 #define DSHOT_DMA_BUFFER_SIZE 18 /* resolution + frame reset (2us) */
@@ -39,21 +28,6 @@
 
 #define DSHOT_CMD_SPIN_DIRECTION_1 7
 #define DSHOT_CMD_SPIN_DIRECTION_2 8
-
-namespace
-{
-#ifdef STM32H7
-  uint32_t motor1_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection1")));
-  uint32_t motor2_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection2")));
-  uint32_t motor3_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection3")));
-  uint32_t motor4_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection4")));
-#else
-  uint32_t motor1_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
-  uint32_t motor2_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
-  uint32_t motor3_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
-  uint32_t motor4_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
-#endif
-}
 
 /* Enumeration */
 typedef enum
@@ -96,6 +70,7 @@ private:
   /* Static functions */
   // dshot init
   uint32_t dshot_choose_type(dshot_type_e dshot_type);
+  uint32_t get_timer_clock(TIM_HandleTypeDef* htim);
   void dshot_set_timer(dshot_type_e dshot_type);
   static void dshot_dma_tc_callback(DMA_HandleTypeDef* hdma);
   void dshot_put_tc_callback_function();
@@ -108,6 +83,9 @@ private:
   void dshot_dma_start();
   void dshot_enable_dma_request();
 
+  uint32_t motor_bit_0_ = 0;
+  uint32_t motor_bit_1_ = 0;
+  uint32_t actual_bitrate_ = 0;
   int num_freq_divide = 0;  // make sure that the freq for telemetry is < 150hz
 };
 
