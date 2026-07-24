@@ -231,19 +231,34 @@ void AttitudeController::pwmsControl(void)
 
   if(dshot_)
     {
-      /* direct pwm type */
+      /* DShot output for four direct-connected ESC channels. */
       uint16_t motor_value[4] = { 0, 0, 0, 0 };
       for (int i = 0; i < 4; i++)
         {
-          // target_pwm_: 0.5 ~ 1.0
-          uint16_t motor_v = (uint16_t)((target_pwm_[i] - 0.5) / 0.5 * DSHOT_RANGE + DSHOT_MIN_THROTTLE);
+          /*
+           * DShot value 0 is the disarmed command. Values 1..47 are special
+           * commands and must never be reached through a float-to-uint wrap.
+           * IDLE_DUTY (0.5) maps to zero; the usable throttle interval
+           * (0.5, 1.0] maps monotonically to [48, 2047].
+           */
+          if (!start_control_flag_ && !pwm_test_flag_)
+            {
+              motor_value[i] = 0;
+              continue;
+            }
 
-          if (motor_v > DSHOT_MAX_THROTTLE)
-            motor_v = DSHOT_MAX_THROTTLE;
-          else if (motor_v < DSHOT_MIN_THROTTLE)
-            motor_v = DSHOT_MIN_THROTTLE;
-    
-          motor_value[i] = motor_v;
+          float normalized = (target_pwm_[i] - IDLE_DUTY) /
+            (MAX_PWM - IDLE_DUTY);
+          if (normalized <= 0.0f)
+            {
+              motor_value[i] = 0;
+            }
+          else
+            {
+              if (normalized > 1.0f) normalized = 1.0f;
+              motor_value[i] = static_cast<uint16_t>(
+                DSHOT_MIN_THROTTLE + normalized * DSHOT_RANGE + 0.5f);
+            }
         }
 
       dshot_->write(motor_value, dshot_->is_telemetry_);

@@ -87,7 +87,8 @@
 
 //2.3 Flight Control
 #define FLIGHT_CONTROL_FLAG 1
-#define DSHOT 0
+#define DSHOT 1
+#define DSHOT_TELEMETRY 0
 //* Do not change following code!!!
 ///////////////////////////////////
 #if !ATTITUDE_ESTIMATE_FLAG

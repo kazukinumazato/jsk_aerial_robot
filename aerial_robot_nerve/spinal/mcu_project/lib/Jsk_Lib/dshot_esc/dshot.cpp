@@ -5,6 +5,21 @@
 
 #include "dshot.h"
 
+namespace
+{
+#ifdef STM32H7
+  uint32_t motor1_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection1")));
+  uint32_t motor2_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection2")));
+  uint32_t motor3_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection3")));
+  uint32_t motor4_dmabuffer_[DSHOT_DMA_BUFFER_SIZE] __attribute__((section(".DShotBufferSection4")));
+#else
+  uint32_t motor1_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
+  uint32_t motor2_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
+  uint32_t motor3_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
+  uint32_t motor4_dmabuffer_[DSHOT_DMA_BUFFER_SIZE];
+#endif
+}
+
 void DShot::init(dshot_type_e dshot_type, TIM_HandleTypeDef* htim_motor_1, uint32_t channel_motor_1,
                  TIM_HandleTypeDef* htim_motor_2, uint32_t channel_motor_2, TIM_HandleTypeDef* htim_motor_3,
                  uint32_t channel_motor_3, TIM_HandleTypeDef* htim_motor_4, uint32_t channel_motor_4)
@@ -32,6 +47,25 @@ void DShot::initTelemetry(UART_HandleTypeDef* huart)
 
 void DShot::write(uint16_t* motor_value_array, bool is_telemetry)
 {
+  if (motor_value_array == nullptr)
+  {
+    return;
+  }
+
+  DMA_HandleTypeDef* dma_handles[4] = {
+    htim_motor_1_->hdma[TIM_DMA_ID_CC1],
+    htim_motor_2_->hdma[TIM_DMA_ID_CC2],
+    htim_motor_3_->hdma[TIM_DMA_ID_CC3],
+    htim_motor_4_->hdma[TIM_DMA_ID_CC4]
+  };
+  for (DMA_HandleTypeDef* hdma : dma_handles)
+  {
+    if (hdma == nullptr || hdma->State != HAL_DMA_STATE_READY)
+    {
+      return;
+    }
+  }
+
   bool is_telemetry_array[4] = {false, false, false, false};
 
   if (is_telemetry)
@@ -99,29 +133,62 @@ uint32_t DShot::dshot_choose_type(dshot_type_e dshot_type)
   }
 }
 
+uint32_t DShot::get_timer_clock(TIM_HandleTypeDef* htim)
+{
+  /*
+   * TIM1/TIM8 are clocked from APB2 on the boards supported here. With the
+   * default TIMPRE setting the timer clock is twice PCLK when the APB
+   * prescaler is not 1. Do not use SystemCoreClock: H7_v2 runs TIM1 at
+   * 50 MHz while its CPU clock is 100 MHz.
+   */
+  uint32_t pclk;
+  if (htim->Instance == TIM1 || htim->Instance == TIM8)
+  {
+    pclk = HAL_RCC_GetPCLK2Freq();
+  }
+  else
+  {
+    pclk = HAL_RCC_GetPCLK1Freq();
+  }
+
+  if (pclk < HAL_RCC_GetHCLKFreq())
+  {
+    pclk *= 2U;
+  }
+  return pclk;
+}
+
 void DShot::dshot_set_timer(dshot_type_e dshot_type)
 {
-  uint16_t dshot_prescaler;
-  uint32_t timer_clock = TIMER_CLOCK;  // all timer clock is same as SystemCoreClock in stm32f411
+  const uint32_t requested_bitrate = dshot_choose_type(dshot_type);
+  const uint32_t timer_clock = get_timer_clock(htim_motor_1_);
 
-  // Calculate prescaler by dshot type
-  dshot_prescaler = lrintf((float)timer_clock / dshot_choose_type(dshot_type) + 0.01f) - 1;
+  /*
+   * Run the timer without a prescaler. This gives accurate bit timing and
+   * allows the DShot-specified T0H=3/8 bit and T1H=3/4 bit pulse widths.
+   */
+  const uint32_t bit_ticks =
+    (timer_clock + requested_bitrate / 2U) / requested_bitrate;
+  motor_bit_0_ = (bit_ticks * 3U + 4U) / 8U;
+  motor_bit_1_ = (bit_ticks * 3U + 2U) / 4U;
+  actual_bitrate_ = timer_clock / bit_ticks;
 
-  // motor1
-  __HAL_TIM_SET_PRESCALER(htim_motor_1_, dshot_prescaler);
-  __HAL_TIM_SET_AUTORELOAD(htim_motor_1_, MOTOR_BITLENGTH);
-
-  // motor2
-  __HAL_TIM_SET_PRESCALER(htim_motor_2_, dshot_prescaler);
-  __HAL_TIM_SET_AUTORELOAD(htim_motor_2_, MOTOR_BITLENGTH);
-
-  // motor3
-  __HAL_TIM_SET_PRESCALER(htim_motor_3_, dshot_prescaler);
-  __HAL_TIM_SET_AUTORELOAD(htim_motor_3_, MOTOR_BITLENGTH);
-
-  // motor4
-  __HAL_TIM_SET_PRESCALER(htim_motor_4_, dshot_prescaler);
-  __HAL_TIM_SET_AUTORELOAD(htim_motor_4_, MOTOR_BITLENGTH);
+  TIM_HandleTypeDef* timers[4] = {
+    htim_motor_1_, htim_motor_2_, htim_motor_3_, htim_motor_4_
+  };
+  for (TIM_HandleTypeDef* htim : timers)
+  {
+    __HAL_TIM_DISABLE(htim);
+    __HAL_TIM_SET_PRESCALER(htim, 0U);
+    __HAL_TIM_SET_AUTORELOAD(htim, bit_ticks - 1U);
+    __HAL_TIM_SET_COUNTER(htim, 0U);
+    __HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_1, 0U);
+    __HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_2, 0U);
+    __HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_3, 0U);
+    __HAL_TIM_SET_COMPARE(htim, TIM_CHANNEL_4, 0U);
+    htim->Instance->EGR = TIM_EGR_UG;
+    __HAL_TIM_CLEAR_FLAG(htim, TIM_FLAG_UPDATE);
+  }
 }
 
 // __HAL_TIM_DISABLE_DMA is needed to eliminate the delay between different dshot signals
@@ -166,12 +233,22 @@ void DShot::dshot_start_pwm()
   HAL_TIM_PWM_Start(htim_motor_2_, channel_motor_2_);
   HAL_TIM_PWM_Start(htim_motor_3_, channel_motor_3_);
   HAL_TIM_PWM_Start(htim_motor_4_, channel_motor_4_);
+
+  /* Keep all outputs low until the first complete DShot frame is queued. */
+  __HAL_TIM_SET_COMPARE(htim_motor_1_, channel_motor_1_, 0U);
+  __HAL_TIM_SET_COMPARE(htim_motor_2_, channel_motor_2_, 0U);
+  __HAL_TIM_SET_COMPARE(htim_motor_3_, channel_motor_3_, 0U);
+  __HAL_TIM_SET_COMPARE(htim_motor_4_, channel_motor_4_, 0U);
 }
 
 uint16_t DShot::dshot_prepare_packet(uint16_t value, bool dshot_telemetry)
 {
   uint16_t packet;
 
+  if (value > DSHOT_MAX_THROTTLE)
+  {
+    value = DSHOT_MAX_THROTTLE;
+  }
   packet = (value << 1) | (dshot_telemetry ? 1 : 0);
 
   // compute checksum
@@ -198,7 +275,7 @@ void DShot::dshot_prepare_dmabuffer(uint32_t* motor_dmabuffer, uint16_t value, b
 
   for (int i = 0; i < 16; i++)
   {
-    motor_dmabuffer[i] = (packet & 0x8000) ? MOTOR_BIT_1 : MOTOR_BIT_0;
+    motor_dmabuffer[i] = (packet & 0x8000) ? motor_bit_1_ : motor_bit_0_;
     packet <<= 1;
   }
 

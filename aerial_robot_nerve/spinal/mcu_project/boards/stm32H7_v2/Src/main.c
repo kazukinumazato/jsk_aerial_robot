@@ -264,10 +264,14 @@ int main(void)
 
   DShot* dshotptr = nullptr;
 #if DSHOT
-  battery_status_.init(&hadc1, &nh_, false);
+  battery_status_.init(&hadc1, &nh_);
   estimator_.init(&imu_, &baro_, &gps_, &nh_);  // imu + baro + gps => att + alt + pos(xy)
-  dshot_.init(DSHOT600, &htim1,TIM_CHANNEL_1, &htim1,TIM_CHANNEL_2, &htim1,TIM_CHANNEL_3, &htim1, TIM_CHANNEL_4);
+  // Bluejay-4IN1-33A supports DShot300/600. 300 is sufficient for the 1kHz control loop.
+  dshot_.init(DSHOT300, &htim1,TIM_CHANNEL_1, &htim1,TIM_CHANNEL_2, &htim1,TIM_CHANNEL_3, &htim1, TIM_CHANNEL_4);
+#if DSHOT_TELEMETRY
+  // Legacy KISS telemetry requires a separate telemetry wire; this is not bidirectional DShot.
   dshot_.initTelemetry(&huart6);
+#endif
   dshotptr = &dshot_;
 #else
   battery_status_.init(&hadc1, &nh_);
