@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Standalone hardware bridge. The full robot bringup includes this file
+       inside its own namespace and passes namespace:="". -->
+  <arg name="namespace" default="crobat" />
+  <arg name="backend" default="radxa" />
+  <arg name="radxa_config" default="$(find radxa)/config/cubie_a7z.yaml" />
+
+  <!-- Compatibility path for the original separate spinal controller. -->
+  <arg name="serial_port" default="/dev/flight_controller" />
+  <arg name="serial_baud" default="921600" />
+  <arg name="udp_port" default="12345" />
+  <arg name="udp_addr" default="192.168.25.238" />
+
+  <include file="$(find crobat)/launch/includes/bridge_backend.launch.xml"
+           if="$(eval arg('namespace') == '')">
+    <arg name="backend" value="$(arg backend)" />
+    <arg name="radxa_config" value="$(arg radxa_config)" />
+    <arg name="serial_port" value="$(arg serial_port)" />
+    <arg name="serial_baud" value="$(arg serial_baud)" />
+    <arg name="udp_port" value="$(arg udp_port)" />
+    <arg name="udp_addr" value="$(arg udp_addr)" />
+  </include>
+
+  <group ns="$(arg namespace)" unless="$(eval arg('namespace') == '')">
+    <include file="$(find crobat)/launch/includes/bridge_backend.launch.xml">
+      <arg name="backend" value="$(arg backend)" />
+      <arg name="radxa_config" value="$(arg radxa_config)" />
+      <arg name="serial_port" value="$(arg serial_port)" />
+      <arg name="serial_baud" value="$(arg serial_baud)" />
+      <arg name="udp_port" value="$(arg udp_port)" />
+      <arg name="udp_addr" value="$(arg udp_addr)" />
+    </include>
+  </group>
+</launch>

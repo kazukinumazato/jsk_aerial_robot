@@ -27,9 +27,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 
 /* sensors */
-#ifdef SIMULATION
-#include <tf/LinearMath/Matrix3x3.h>
-#else
+#ifndef SIMULATION
 #include "sensors/imu/drivers/mpu9250/imu_mpu9250.h"
 #include "sensors/imu/drivers/icm20948/icm_20948.h"
 #include "sensors/gps/gps_ublox.h"

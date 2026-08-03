@@ -56,9 +56,12 @@ public:
     start_control_flag_ = false;
     pwm_test_flag_ = false;
     integrate_flag_ = false;
+    force_landing_flag_ = false;
+    gimbal_set_flag_ = false;
   }
 
   inline AttitudeController& getAttController(){ return att_controller_;}
+  inline bool isArmed() const { return start_control_flag_; }
 
 #else
   FlightControl():
@@ -98,6 +101,8 @@ public:
     start_control_flag_ = false;
     pwm_test_flag_ = false;
     integrate_flag_ = false;
+    force_landing_flag_ = false;
+    gimbal_set_flag_ = false;
   }
   void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL)
   {

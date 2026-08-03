@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="backend" />
+  <arg name="radxa_config" />
+  <arg name="serial_port" />
+  <arg name="serial_baud" />
+  <arg name="udp_port" />
+  <arg name="udp_addr" />
+
+  <include file="$(find radxa)/launch/radxa_spinal.launch"
+           if="$(eval arg('backend') == 'radxa')">
+    <arg name="namespace" value="" />
+    <arg name="config" value="$(arg radxa_config)" />
+  </include>
+
+  <include file="$(find spinal)/launch/bridge.launch"
+           if="$(eval arg('backend') == 'serial')">
+    <arg name="mode" value="serial" />
+    <arg name="serial_port" value="$(arg serial_port)" />
+    <arg name="serial_baud" value="$(arg serial_baud)" />
+  </include>
+
+  <include file="$(find spinal)/launch/bridge.launch"
+           if="$(eval arg('backend') == 'udp')">
+    <arg name="mode" value="udp" />
+    <arg name="udp_port" value="$(arg udp_port)" />
+    <arg name="udp_addr" value="$(arg udp_addr)" />
+  </include>
+</launch>

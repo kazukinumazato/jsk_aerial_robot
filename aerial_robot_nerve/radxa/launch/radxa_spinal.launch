@@ -1,0 +1,18 @@
+<launch>
+  <arg name="config" default="$(find radxa)/config/cubie_a7z.yaml"/>
+  <arg name="namespace" default=""/>
+
+  <group if="$(eval arg('namespace') == '')">
+    <node pkg="radxa" type="radxa_spinal_node" name="radxa_spinal"
+          output="screen" required="true">
+      <rosparam command="load" file="$(arg config)"/>
+    </node>
+  </group>
+
+  <group ns="$(arg namespace)" unless="$(eval arg('namespace') == '')">
+    <node pkg="radxa" type="radxa_spinal_node" name="radxa_spinal"
+          output="screen" required="true">
+      <rosparam command="load" file="$(arg config)"/>
+    </node>
+  </group>
+</launch>

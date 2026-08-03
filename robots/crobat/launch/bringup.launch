@@ -22,6 +22,8 @@
   <arg name="mujoco" default="False" />
   <arg name="demo" default="True" />
   <arg name="full_actuated" default="True" />
+  <arg name="flight_controller_backend" default="radxa" />
+  <arg name="radxa_config" default="$(find radxa)/config/cubie_a7z.yaml" />
   
   ###########  Parameters  ###########
   <group ns="$(arg robot_ns)">
@@ -89,6 +91,8 @@
     <arg name="simulation" value="$(arg simulation)" />
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="robot_id" value="$(arg robot_id)" />
+    <arg name="flight_controller_backend" value="$(arg flight_controller_backend)" />
+    <arg name="radxa_config" value="$(arg radxa_config)" />
   </include >
 
   ###########  Servo Bridge  ###########

@@ -1,47 +1,71 @@
 #pragma once
 
-#include <string>
+#include <array>
 #include <cstdint>
-#include <vector>
 #include <memory>
+#include <string>
+#include <vector>
 
+#include <radxa/ads1015.h>
 #include <radxa/board_io.h>
-#include <radxa/pwm_driver.h>
+#include <radxa/dshot_driver.h>
 #include <radxa/i2c_driver.h>
+#include <radxa/icm20948.h>
+#include <radxa/pwm_driver.h>
 
 namespace radxa
 {
-  class RadxaBoardIo : public radxa::BoardIo
-  {
-  private:
-    static constexpr uint8_t imu = 0x69;
-    static constexpr uint8_t imu_who_am_i_reg = 0x00;
-    uint8_t imu_who_am_i;
-    static constexpr uint8_t pwr[2] = { 0x06, 0x01 };
-    static constexpr uint8_t accel_reg = 0x2D;
-    static constexpr uint8_t gyro_reg = 0x33;
 
-    static constexpr double pwm_freq = 500.0;
-    struct PwmConfig {
-      uint8_t pwm_chip;
-      uint8_t pwm_channel;
-    };
-    const std::vector<PwmConfig> pwm_configs;
-    
-    std::vector<std::unique_ptr<PwmDriver>> pwm_drivers_;
-    radxa::I2cDriver i2c;
-  
-  public:
-    RadxaBoardIo();
-    ~RadxaBoardIo() override = default;
-    bool Init() override;
+struct PwmConfig
+{
+  int chip{0};
+  int channel{0};
+};
 
-    bool Init();
+struct RadxaBoardConfig
+{
+  std::string i2c_device{"/dev/i2c-7"};
+  Icm20948::Config imu;
+  Ads1015::Config adc;
 
-    bool getVoltage(float& voltage) override;
-    bool readImu(ImuRaw& data) override;
-    bool setMotorPwms(const float* pwms, int motor_number) override;
-  
-  };
+  // One independent SPI controller/MOSI output is required per DShot channel.
+  std::vector<std::string> dshot_spi_devices;
+  uint32_t dshot_spi_speed_hz{2400000};
+  bool require_all_dshot_channels{false};
 
-}
+  // Physical output ports 5..8. Defaults retain the mapping from the
+  // original Cubie A7Z prototype; verify pwmchip numbering after overlays.
+  std::array<PwmConfig, 4> pwm{{
+      {10, 7}, {20, 1}, {20, 2}, {20, 3}}};
+  double pwm_frequency_hz{500.0};
+};
+
+class RadxaBoardIo : public BoardIo
+{
+public:
+  explicit RadxaBoardIo(RadxaBoardConfig config);
+  ~RadxaBoardIo() override;
+
+  bool init() override;
+  bool readImu(ImuSample& sample) override;
+  bool readBatteryVoltage(float& voltage) override;
+  bool setMotorOutputs(const float* values, std::size_t count,
+                       bool dshot_enabled) override;
+  void stopOutputs() override;
+
+  void setAdcScale(float adc_scale);
+  std::size_t dshotChannelCount() const;
+
+  static uint16_t normalizedToDshot(float value, bool enabled);
+
+private:
+  RadxaBoardConfig config_;
+  I2cDriver i2c_;
+  Icm20948 imu_;
+  Ads1015 adc_;
+  std::vector<std::unique_ptr<DshotDriver>> dshot_;
+  std::array<std::unique_ptr<PwmDriver>, 4> pwm_;
+  bool initialized_{false};
+};
+
+}  // namespace radxa

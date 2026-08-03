@@ -1,8 +1,11 @@
 #include "radxa/i2c_driver.h"
+#include <cerrno>
 #include <string>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <iostream>
+#include <limits>
+#include <cstring>
 #include <unistd.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
@@ -39,12 +42,18 @@ namespace radxa
     impl_->fd = ::open(impl_->device.c_str(), O_RDWR);
     
     if (impl_->fd < 0) {
-      std::cerr << "device open failed: " << impl_->device << std::endl;
+      std::cerr << "device open failed: " << impl_->device << ": "
+                << std::strerror(errno) << std::endl;
       return false;
     }
     std::cout << "device opened: " << impl_->device << std::endl;
 
     return true;
+  }
+
+  bool I2cDriver::isOpen() const
+  {
+    return impl_->fd >= 0;
   }
 
   void I2cDriver::close()
@@ -72,6 +81,10 @@ namespace radxa
 
   bool I2cDriver::write(uint8_t address_7bit, const uint8_t* data, std::size_t length)
   {
+    if ((length > 0 && data == nullptr) ||
+        length > static_cast<std::size_t>(std::numeric_limits<ssize_t>::max())) {
+      return false;
+    }
     if(impl_->fd < 0){
       std::cerr << "i2c device is not open" << std::endl;
       return false;
@@ -92,6 +105,10 @@ namespace radxa
 
   bool I2cDriver::read(uint8_t address_7bit, uint8_t* data, std::size_t length)
   {
+    if ((length > 0 && data == nullptr) ||
+        length > static_cast<std::size_t>(std::numeric_limits<ssize_t>::max())) {
+      return false;
+    }
     if(impl_->fd < 0){
       std::cerr << "i2c device is not open" << std::endl;
       return false;
@@ -111,6 +128,12 @@ namespace radxa
   }
 
   bool I2cDriver::writeRead(uint8_t address_7bit, const uint8_t* write_data, std::size_t write_length, uint8_t* read_data, std::size_t read_length){
+    if ((write_length > 0 && write_data == nullptr) ||
+        (read_length > 0 && read_data == nullptr) ||
+        write_length > std::numeric_limits<__u16>::max() ||
+        read_length > std::numeric_limits<__u16>::max()) {
+      return false;
+    }
     if(impl_->fd < 0){
       std::cerr << "i2c device is not open" << std::endl;
       return false;

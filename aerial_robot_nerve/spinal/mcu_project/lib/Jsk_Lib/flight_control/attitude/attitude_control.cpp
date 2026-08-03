@@ -160,6 +160,7 @@ void AttitudeController::baseInit()
 
   // frame
   offset_rot_.identity();
+  inertia_.identity();
 
   reset();
 }
@@ -485,7 +486,9 @@ void AttitudeController::reset(void)
           thrust_i_gain_[i][j] = 0;
           thrust_d_gain_[i][j] = 0;
           torque_allocation_matrix_inv_[i][j] = 0.0;
+          p_matrix_pseudo_inverse_[i][j] = 0.0;
         }
+      p_matrix_pseudo_inverse_[i][3] = 0.0;
     }
 
   for(int i = 0; i < 3; i++)
@@ -606,7 +609,8 @@ void AttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
       }
 
 #ifdef SIMULATION
-  if(sim_voltage_== 0) sim_voltage_ = motor_info_[0].voltage;
+  if(sim_voltage_ == 0 && !motor_info_.empty())
+    sim_voltage_ = motor_info_[0].voltage;
 #endif
 
 #ifndef SIMULATION
@@ -748,29 +752,59 @@ void AttitudeController::maxYawGainIndex()
 
 void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
 {
-#ifndef SIMULATION  
-  if(pwm_msg.pwms_length && !pwm_test_flag_)
+#ifdef SIMULATION
+  const std::size_t pwm_count = pwm_msg.pwms.size();
+  const std::size_t index_count = pwm_msg.motor_index.size();
+#else
+  const std::size_t pwm_count = pwm_msg.pwms_length;
+  const std::size_t index_count = pwm_msg.motor_index_length;
+#endif
+
+  if(pwm_count && !pwm_test_flag_)
     {
       pwm_test_flag_ = true;
+#ifdef SIMULATION
+      ROS_WARN("Enter pwm test mode");
+#else
       nh_->logwarn("Enter pwm test mode");
+#endif
     }
-  else if(!pwm_msg.pwms_length && pwm_test_flag_)
+  else if(!pwm_count && pwm_test_flag_)
     {
       pwm_test_flag_ = false;
+#ifdef SIMULATION
+      ROS_WARN("Escape from pwm test mode");
+#else
       nh_->logwarn("Escape from pwm test mode");
+#endif
       return;
     }
 
-  if(pwm_msg.motor_index_length)
+  if(!pwm_count) return;
+
+  if(index_count)
     {
       /*Individual test mode*/
-      if(pwm_msg.motor_index_length != pwm_msg.pwms_length)
+      if(index_count != pwm_count)
         {
+#ifdef SIMULATION
+          ROS_ERROR("The number of index does not match the number of pwms.");
+#else
           nh_->logerror("The number of index does not match the number of pwms.");
+#endif
           return;
         }
-      for(int i = 0; i < pwm_msg.motor_index_length; i++){
+      for(std::size_t i = 0; i < index_count; i++){
         int motor_index = pwm_msg.motor_index[i];
+        if (motor_index < 0 || motor_index >= MAX_MOTOR_NUMBER)
+          {
+#ifdef SIMULATION
+            ROS_ERROR("PWM test motor index %d is out of range", motor_index);
+#else
+            nh_->logerror("PWM test motor index is out of range");
+#endif
+            continue;
+          }
                 /*fail safe*/
         if (pwm_msg.pwms[i] >= IDLE_DUTY && pwm_msg.pwms[i] <= MAX_PWM)
           {
@@ -778,7 +812,11 @@ void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
           }
         else
           {
+#ifdef SIMULATION
+            ROS_WARN("FAIL SAFE! Invalid PWM value for motor");
+#else
             nh_->logwarn("FAIL SAFE!  Invaild PWM value for motor");
+#endif
             pwm_test_value_[motor_index] = IDLE_DUTY;
           }
       }
@@ -794,12 +832,15 @@ void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
           }
         else
           {
+#ifdef SIMULATION
+            ROS_WARN("FAIL SAFE! Invalid PWM value for motors");
+#else
             nh_->logwarn("FAIL SAFE!  Invaild PWM value for motors");
+#endif
             pwm_test_value_[i] = IDLE_DUTY;
           }
       }
     }
-#endif
 }
 
 void AttitudeController::setStartControlFlag(bool start_control_flag)
@@ -811,6 +852,17 @@ void AttitudeController::setStartControlFlag(bool start_control_flag)
 
 void AttitudeController::setMotorNumber(uint16_t motor_number)
 {
+  if (motor_number > MAX_MOTOR_NUMBER)
+    {
+#ifdef SIMULATION
+      ROS_ERROR("motor number %u exceeds controller limit %u",
+                motor_number, MAX_MOTOR_NUMBER);
+#else
+      nh_->logerror("motor number exceeds controller limit");
+#endif
+      return;
+    }
+
   /* check the motor number which has spine system */
   if(motor_number_ > 0)
     {
@@ -964,6 +1016,8 @@ void AttitudeController::pwmConversion()
 #else
       float voltage = bat_->getVoltage();
 #endif
+
+      if (!std::isfinite(voltage) || voltage <= 0) return;
 
       /* find the best reference voltage */
       float min_voltage_diff = 1e6;

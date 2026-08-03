@@ -25,6 +25,8 @@
   <run_depend>aerial_robot_simulation</run_depend>
   <run_depend>gimbalrotor</run_depend>
   <run_depend>pluginlib</run_depend>
+  <run_depend>radxa</run_depend>
+  <run_depend>spinal</run_depend>
   
   <test_depend>rostest</test_depend>
 

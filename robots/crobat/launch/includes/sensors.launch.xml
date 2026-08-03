@@ -6,15 +6,20 @@
   <arg name="robot_ns" default="crobat" />
   <arg name="full_actuated" default="true" />
   <arg name="robot_id" default="" />
+  <arg name="flight_controller_backend" default="radxa" />
+  <arg name="radxa_config" default="$(find radxa)/config/cubie_a7z.yaml" />
 
   <group ns="$(arg robot_ns)">
     <group if="$(arg real_machine)">
       <group unless="$(arg simulation)">
-        <!-- fc & IMU & GPS -->
-        <include file="$(find spinal)/launch/bridge.launch" >
-          <arg name="mode" value="serial" />
+        <!-- FC, IMU, battery ADC, and outputs. Radxa is in-process; no
+             rosserial transport is created for the default backend. -->
+        <include file="$(find crobat)/launch/bridge.launch" >
+          <arg name="namespace" value="" />
+          <arg name="backend" value="$(arg flight_controller_backend)" />
+          <arg name="radxa_config" value="$(arg radxa_config)" />
           <arg name="serial_port" value="/dev/flight_controller" />
-	  <arg name="serial_baud" value="921600" if="$(arg full_actuated)"/>
+	  <arg name="serial_baud" value="921600" />
         </include>
 
         <!-- mocap -->

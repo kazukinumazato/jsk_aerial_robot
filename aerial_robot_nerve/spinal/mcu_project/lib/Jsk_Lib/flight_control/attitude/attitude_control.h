@@ -21,6 +21,7 @@
 #endif
 
 #include <math/AP_Math.h>
+#include <cmath>
 #include <vector>
 
 #ifndef SIMULATION
@@ -108,6 +109,16 @@ public:
   void setForceLandingFlag(bool force_landing_flag) { force_landing_flag_ = force_landing_flag; }
   float getPwm(uint8_t index) {return target_pwm_[index];}
   float getForce(uint8_t index) {return target_thrust_[index];}
+
+#ifdef SIMULATION
+  // The native ROS build is also used by the Radxa hardware backend. Feed its
+  // measured battery voltage directly instead of the Gazebo set_sim_voltage
+  // topic so thrust-to-PWM compensation matches the MCU implementation.
+  void setMeasuredVoltage(float voltage)
+  {
+    if (std::isfinite(voltage) && voltage > 0) sim_voltage_ = voltage;
+  }
+#endif
 
   bool activated();
 

@@ -57,6 +57,10 @@ namespace radxa
       return false;
     }
 
+    // A previous process may have left the channel enabled. Linux PWM does
+    // not permit changing the period on every driver while enabled.
+    pwm_disable(impl_->pwm);
+
     if (pwm_set_frequency(impl_->pwm, impl_->frequency_hz) < 0) {
       std::cerr << "pwm_set_frequency failed: " << pwm_errmsg(impl_->pwm) << std::endl;
       close();
@@ -123,6 +127,22 @@ namespace radxa
       return false;
     }
 
+    return true;
+  }
+
+  bool PwmDriver::setDutyCycle(double duty_cycle)
+  {
+    if (!impl_->pwm) {
+      std::cerr << "pwm_set_duty_cycle failed: pwm is not opened" << std::endl;
+      return false;
+    }
+
+    duty_cycle = std::clamp(duty_cycle, 0.0, 1.0);
+    if (pwm_set_duty_cycle(impl_->pwm, duty_cycle) < 0) {
+      std::cerr << "pwm_set_duty_cycle failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      return false;
+    }
     return true;
   }
 

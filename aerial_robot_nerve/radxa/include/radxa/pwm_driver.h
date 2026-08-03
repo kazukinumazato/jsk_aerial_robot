@@ -18,6 +18,7 @@ namespace radxa
     bool disable();
 
     bool setPulseWidthUs(double pulse_us);
+    bool setDutyCycle(double duty_cycle);
 
     double frequencyHz() const;
     double periodUs() const;
