@@ -16,7 +16,7 @@ namespace radxa
   private:
     static constexpr uint8_t imu = 0x69;
     static constexpr uint8_t imu_who_am_i_reg = 0x00;
-    static uint8_t imu_who_am_i;
+    uint8_t imu_who_am_i;
     static constexpr uint8_t pwr[2] = { 0x06, 0x01 };
     static constexpr uint8_t accel_reg = 0x2D;
     static constexpr uint8_t gyro_reg = 0x33;
@@ -34,6 +34,7 @@ namespace radxa
   public:
     RadxaBoardIo();
     ~RadxaBoardIo() override = default;
+    bool Init() override;
 
     bool Init();
 

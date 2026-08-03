@@ -8,6 +8,8 @@ namespace radxa
   public:
     virtual ~BoardIo() = default;
 
+    virtual bool Init() = 0;
+
     struct ImuRaw
     {
       float acc[3];

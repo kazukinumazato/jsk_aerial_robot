@@ -156,7 +156,7 @@ add_library(radxa_hw
 
 target_link_libraries(radxa_hw
   periphery
-  ${catikin_LIBRARIES}
+  ${catkin_LIBRARIES}
   )
 
 add_executable(pwm_test
@@ -169,7 +169,7 @@ add_executable(i2c_test
 
 target_link_libraries(pwm_test
   radxa_hw
-  ${catikin_LIBRARIES}
+  ${catkin_LIBRARIES}
   )
 
 target_link_libraries(i2c_test
