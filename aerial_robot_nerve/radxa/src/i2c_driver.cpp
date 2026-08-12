@@ -71,8 +71,10 @@ namespace radxa
   {
     if (::ioctl(fd, I2C_SLAVE, address_7bit) < 0)
       {
+	const int error = errno;
 	std::cerr << "fail to set i2c slave address 0x" << std::hex
-		  << static_cast<int>(address_7bit) << std::dec << std::endl;
+		  << static_cast<int>(address_7bit) << std::dec << ": "
+		  << std::strerror(error) << " (errno " << error << ")" << std::endl;
 	return false;
       }
 
@@ -92,7 +94,10 @@ namespace radxa
     if(!setAddress(impl_->fd, address_7bit)) return false;
     ssize_t written_size = ::write(impl_->fd, data, length);
     if(written_size < 0){
-      std::cerr << "fail to write to 0x" << std::hex << static_cast<int>(address_7bit) << std::dec << std::endl;
+      const int error = errno;
+      std::cerr << "fail to write to 0x" << std::hex << static_cast<int>(address_7bit)
+                << std::dec << ": " << std::strerror(error) << " (errno "
+                << error << ")" << std::endl;
       return false;
     }
     if(static_cast<std::size_t>(written_size) != length){
@@ -116,7 +121,10 @@ namespace radxa
     if(!setAddress(impl_->fd, address_7bit)) return false;
     ssize_t read_size = ::read(impl_->fd, data, length);
     if(read_size < 0){
-      std::cerr << "fail to read from 0x" << std::hex << static_cast<int>(address_7bit) << std::dec << std::endl;
+      const int error = errno;
+      std::cerr << "fail to read from 0x" << std::hex << static_cast<int>(address_7bit)
+                << std::dec << ": " << std::strerror(error) << " (errno "
+                << error << ")" << std::endl;
       return false;
     }
     if(static_cast<std::size_t>(read_size) != length){
@@ -144,8 +152,10 @@ namespace radxa
     };
     struct i2c_rdwr_ioctl_data ioctl_data = { messages, 2 }; 
     if(::ioctl(impl_->fd, I2C_RDWR, &ioctl_data) < 0){
+      const int error = errno;
       std::cerr << "fail to rdwr to 0x" << std::hex << static_cast<int>(address_7bit)
-	       << std::dec << std::endl;
+	       << std::dec << ": " << std::strerror(error) << " (errno "
+               << error << ")" << std::endl;
       return false;
     }
 

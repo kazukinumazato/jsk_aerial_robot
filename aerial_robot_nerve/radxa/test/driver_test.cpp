@@ -1,5 +1,6 @@
 #include <array>
 #include <cstdint>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -7,6 +8,37 @@
 #include <radxa/dshot_driver.h>
 #include <radxa/icm20948.h>
 #include <radxa/radxa_board_io.h>
+
+namespace
+{
+class MagnetometerUnavailableI2c : public radxa::I2cInterface
+{
+public:
+  bool write(uint8_t address, const uint8_t* data, std::size_t length) override
+  {
+    if (address == 0x69 && length == 2) {
+      writes.emplace_back(data[0], data[1]);
+    }
+    return true;
+  }
+
+  bool read(uint8_t, uint8_t*, std::size_t) override { return false; }
+
+  bool writeRead(uint8_t address, const uint8_t* write_data,
+                 std::size_t write_length, uint8_t* read_data,
+                 std::size_t read_length) override
+  {
+    if (address == 0x69 && write_length == 1 && read_length == 1 &&
+        write_data[0] == 0x00) {
+      read_data[0] = 0xea;
+      return true;
+    }
+    return false;
+  }
+
+  std::vector<std::pair<uint8_t, uint8_t>> writes;
+};
+}  // namespace
 
 TEST(Ads1015, DecodesSignedLeftAlignedTwelveBitValues)
 {
@@ -56,6 +88,20 @@ TEST(Icm20948, ConvertsConfiguredFullScaleValuesToSi)
   EXPECT_NEAR(sample.gyro_radps[0], 17.4532925, 1e-4);
   EXPECT_NEAR(sample.gyro_radps[1], -17.4532925, 1e-4);
   EXPECT_NEAR(sample.temperature_c, 21.0, 1e-5);
+}
+
+TEST(Icm20948, RestoresPrimaryBusWhenMagnetometerBypassFails)
+{
+  MagnetometerUnavailableI2c i2c;
+  radxa::Icm20948::Config config;
+  config.enable_magnetometer = true;
+  config.require_magnetometer = false;
+  radxa::Icm20948 imu(i2c, config);
+
+  ASSERT_TRUE(imu.init());
+  ASSERT_FALSE(i2c.writes.empty());
+  EXPECT_EQ(i2c.writes.back().first, 0x0f);
+  EXPECT_EQ(i2c.writes.back().second, 0x00);
 }
 
 int main(int argc, char** argv)

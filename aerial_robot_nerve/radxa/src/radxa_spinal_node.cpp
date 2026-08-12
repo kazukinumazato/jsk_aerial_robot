@@ -41,6 +41,8 @@ radxa::RadxaBoardConfig loadBoardConfig(ros::NodeHandle& pnh)
   int imu_address = config.imu.address;
   pnh.param("imu_address", imu_address, imu_address);
   config.imu.address = static_cast<uint8_t>(imu_address);
+  pnh.param("enable_magnetometer", config.imu.enable_magnetometer,
+            config.imu.enable_magnetometer);
   pnh.param("require_magnetometer", config.imu.require_magnetometer,
             config.imu.require_magnetometer);
   loadArray(pnh, "imu_axis_map", config.imu.axis_map);

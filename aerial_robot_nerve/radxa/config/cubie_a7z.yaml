@@ -1,7 +1,10 @@
 # Shared I2C bus used by ICM-20948 and ADS1015.
-i2c_device: /dev/i2c-7
+i2c_device: /dev/i2c-2
 
 imu_address: 0x69
+# The current Cubie A7Z TWI driver does not recover cleanly when the breakout's
+# internal AK09916 fails to ACK in bypass mode. Accel/gyro remain fully usable.
+enable_magnetometer: false
 require_magnetometer: false
 # Output-axis i reads input-axis imu_axis_map[i], multiplied by axis_sign[i].
 imu_axis_map: [0, 1, 2]
@@ -22,7 +25,7 @@ voltage_filter_alpha: 0.01
 
 # DShot300 requires four independent SPI controllers/MOSI pins. Enable the
 # required pinmux overlays and list the resulting devices in motor order.
-dshot_spi_devices: []
+dshot_spi_devices: [/dev/spidev1.0, /dev/spidev2.0, /dev/spidev3.0, /dev/spidev5.0]
 # Example only; do not copy until the device-to-pin mapping is verified:
 # dshot_spi_devices: [/dev/spidev0.0, /dev/spidev1.0,
 #                     /dev/spidev2.0, /dev/spidev3.0]
@@ -31,8 +34,8 @@ require_all_dshot_channels: false
 
 # Conventional PWM output ports 5..8. Verify numbering under
 # /sys/class/pwm after installing the Cubie A7Z overlays.
-pwm_chips: [10, 20, 20, 20]
-pwm_channels: [7, 1, 2, 3]
+pwm_chips: [10, 10, 10, 10]
+pwm_channels: [0, 3, 4, 5]
 pwm_frequency_hz: 500.0
 # Crobat's extra_servo_cmd uses spinal indices 4..7 and angle values 0..180.
 # These become normalized PWM duty values on physical ports 5..8.

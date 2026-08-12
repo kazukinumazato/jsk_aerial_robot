@@ -130,11 +130,16 @@ bool Icm20948::init()
       !writeRegister(kBank2, kAccelConfig, 0x35)) {
     return false;
   }
+  // Do not feed the all-zero power-up sample into the attitude estimator.
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  magnetometer_available_ = initMagnetometer();
-  if (!magnetometer_available_) {
-    std::cerr << "AK09916 magnetometer is unavailable; continuing with 6-axis IMU"
-              << std::endl;
+  magnetometer_available_ = false;
+  if (config_.enable_magnetometer || config_.require_magnetometer) {
+    magnetometer_available_ = initMagnetometer();
+    if (!magnetometer_available_) {
+      std::cerr << "AK09916 magnetometer is unavailable; continuing with 6-axis IMU"
+                << std::endl;
+    }
   }
   return magnetometer_available_ || !config_.require_magnetometer;
 }
@@ -143,8 +148,11 @@ bool Icm20948::initMagnetometer()
 {
   // Disable the ICM's auxiliary master, then expose its internal AK09916 on
   // the primary I2C bus through bypass mode.
-  if (!writeRegister(kBank0, kUserControl, 0x00) ||
-      !writeRegister(kBank0, kInterruptPinConfig, 0x02)) {
+  if (!writeRegister(kBank0, kUserControl, 0x00)) {
+    return false;
+  }
+  if (!writeRegister(kBank0, kInterruptPinConfig, 0x02)) {
+    disableMagnetometerBypass();
     return false;
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -152,18 +160,36 @@ bool Icm20948::initMagnetometer()
   uint8_t who_am_i = 0;
   if (!i2c_.writeRead(kAk09916Address, &kAk09916WhoAmI, 1, &who_am_i, 1) ||
       who_am_i != kAk09916ExpectedWhoAmI) {
+    // Some ICM-20948 breakout boards do not expose the internal AK09916 in
+    // bypass mode. Leaving BYPASS_EN set after this failure makes subsequent
+    // accel/gyro reads NACK on the Cubie A7Z TWI controller.
+    disableMagnetometerBypass();
     return false;
   }
 
   const uint8_t reset[2] = {kAk09916Control3, 0x01};
   if (!i2c_.write(kAk09916Address, reset, sizeof(reset))) {
+    disableMagnetometerBypass();
     return false;
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
   // Continuous measurement mode 4: 100 Hz.
   const uint8_t mode[2] = {kAk09916Control2, 0x08};
-  return i2c_.write(kAk09916Address, mode, sizeof(mode));
+  if (!i2c_.write(kAk09916Address, mode, sizeof(mode))) {
+    disableMagnetometerBypass();
+    return false;
+  }
+  return true;
+}
+
+bool Icm20948::disableMagnetometerBypass()
+{
+  if (!writeRegister(kBank0, kInterruptPinConfig, 0x00)) {
+    std::cerr << "failed to disable ICM-20948 magnetometer bypass" << std::endl;
+    return false;
+  }
+  return true;
 }
 
 void Icm20948::convertAccelGyro(const uint8_t* raw, ImuSample& sample)

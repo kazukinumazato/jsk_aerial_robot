@@ -15,6 +15,7 @@ public:
   struct Config
   {
     uint8_t address{0x69};
+    bool enable_magnetometer{false};
     bool require_magnetometer{false};
     std::array<int, 3> axis_map{{0, 1, 2}};
     std::array<float, 3> axis_sign{{1.0F, 1.0F, 1.0F}};
@@ -39,6 +40,7 @@ private:
   bool readRegisters(uint8_t bank, uint8_t reg, uint8_t* data,
                      std::size_t length);
   bool initMagnetometer();
+  bool disableMagnetometerBypass();
   bool readMagnetometer(std::array<float, 3>& mag_tesla);
   void applyCalibration(ImuSample& sample) const;
 

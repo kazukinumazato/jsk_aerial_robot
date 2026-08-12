@@ -8,8 +8,9 @@ Implemented interfaces:
 - output 1–4: DShot300 encoded as 2.4 MHz SPI waveforms;
 - output 5–8: conventional Linux PWM; Crobat `extra_servo_cmd` indices 4–7
   retain spinal's angle/180 duty conversion;
-- ICM-20948 over I2C: accel, gyro, AK09916 magnetometer, SI-unit conversion,
-  calibration parameters, and the existing complementary attitude estimator;
+- ICM-20948 over I2C: accel/gyro, optional AK09916 magnetometer, SI-unit
+  conversion, calibration parameters, and the existing complementary attitude
+  estimator;
 - ADS1015 over I2C: divided battery voltage, spinal-compatible filtering, and
   `battery_voltage_status` / `set_adc_scale`;
 - the existing `FlightControl` subscriptions, including `uav_info`,
@@ -49,6 +50,9 @@ ls -l /dev/spidev* /dev/i2c-*
 Power the ICM-20948 and ADS1015 breakouts from 3.3 V and share SDA, SCL, and
 ground. The default addresses are ICM `0x69`, internal AK09916 `0x0c`, and
 ADS1015 `0x48`. Some ICM boards use `0x68`; change `imu_address` if necessary.
+The current breakout does not ACK its internal AK09916 in bypass mode, so
+`cubie_a7z.yaml` keeps `enable_magnetometer: false`; attitude control uses the
+working accel/gyro path. Enable it only after confirming address `0x0c` works.
 
 The ADS1015 board is not a high-voltage input. Add an external divider:
 
@@ -68,7 +72,7 @@ must never exceed `VDD + 0.3 V`.
 Check device discovery on the host before starting ROS:
 
 ```bash
-sudo i2cdetect -y 7
+sudo i2cdetect -y 2
 ```
 
 ## Build and run in Docker
@@ -96,10 +100,11 @@ Remove every propeller and power motors from a current-limited supply.
 
 ```bash
 # ICM-20948 values (Ctrl-C to stop)
-rosrun radxa imu_test /dev/i2c-7 0x69
+rosrun radxa imu_test /dev/i2c-2 0x69
+rosrun radxa adc_test /dev/i2c-2 0x48 0 11.0 20
 
 # One conventional PWM channel for three seconds
-rosrun radxa pwm_test 10 7 500 0.5
+rosrun radxa pwm_test 10 0 500 0.5
 
 # Pure conversion/encoding tests (no hardware)
 catkin run_tests radxa

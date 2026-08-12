@@ -26,6 +26,12 @@ bool RadxaBoardIo::init()
   if (!i2c_.open()) {
     return false;
   }
+  // Probe both devices during startup. Previously the IMU was initialized
+  // first, so an IMU error hid a disconnected ADS1015 until much later.
+  if (!adc_.probe()) {
+    std::cerr << "ADS1015 probe failed" << std::endl;
+    return false;
+  }
   if (!imu_.init()) {
     return false;
   }

@@ -21,6 +21,7 @@ public:
 
   Ads1015(I2cInterface& i2c, Config config);
 
+  bool probe();
   bool readVoltage(float& battery_voltage);
   void setAdcScale(float adc_scale);
   float adcScale() const;

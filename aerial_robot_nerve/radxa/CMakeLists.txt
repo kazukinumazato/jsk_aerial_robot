@@ -48,6 +48,9 @@ add_dependencies(radxa_spinal_node ${catkin_EXPORTED_TARGETS})
 add_executable(imu_test src/imu_test.cpp)
 target_link_libraries(imu_test radxa_hw ${catkin_LIBRARIES})
 
+add_executable(adc_test src/adc_test.cpp)
+target_link_libraries(adc_test radxa_hw ${catkin_LIBRARIES})
+
 add_executable(pwm_test src/pwm_test.cpp)
 target_link_libraries(pwm_test radxa_hw ${catkin_LIBRARIES})
 
@@ -58,7 +61,7 @@ if(CATKIN_ENABLE_TESTING)
   endif()
 endif()
 
-install(TARGETS radxa_hw radxa_spinal_node imu_test pwm_test
+install(TARGETS radxa_hw radxa_spinal_node imu_test adc_test pwm_test
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

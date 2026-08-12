@@ -18,6 +18,13 @@ Ads1015::Ads1015(I2cInterface& i2c, Config config)
 {
 }
 
+bool Ads1015::probe()
+{
+  uint8_t config_data[2]{};
+  return i2c_.writeRead(config_.address, &kConfigRegister, 1, config_data,
+                        sizeof(config_data));
+}
+
 int16_t Ads1015::decodeRaw(uint8_t msb, uint8_t lsb)
 {
   const uint16_t word =
