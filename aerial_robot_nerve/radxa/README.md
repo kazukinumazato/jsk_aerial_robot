@@ -5,7 +5,7 @@ hardware backend in one ROS Noetic process. rosserial is not used.
 
 Implemented interfaces:
 
-- output 1–4: DShot300 encoded as 2.4 MHz SPI waveforms;
+- output 1–4: DShot300 encoded as packed 1.6 MHz SPI waveforms;
 - output 5–8: conventional Linux PWM; Crobat `extra_servo_cmd` indices 4–7
   retain spinal's angle/180 duty conversion;
 - ICM-20948 over I2C: accel/gyro, optional AK09916 magnetometer, SI-unit
@@ -103,6 +103,15 @@ Remove every propeller and power motors from a current-limited supply.
 rosrun radxa imu_test /dev/i2c-2 0x69
 rosrun radxa adc_test /dev/i2c-2 0x48 0 11.0 20
 
+# One DShot output: stop frames, at most 0.55 for at most two seconds, then stop
+rosrun radxa dshot_test /dev/spidev1.0 0.55 1000
+# Optional fifth argument extends stop-frame arming for an ESC power cycle.
+rosrun radxa dshot_test /dev/spidev1.0 0.55 1000 30000
+# Stop-only arming check (two short tones after the startup melody are expected)
+rosrun radxa dshot_arm_test /dev/spidev1.0 30000 1600000
+# Non-rotating validation of a non-zero DShot packet (BEACON1)
+rosrun radxa dshot_beacon_test /dev/spidev1.0
+
 # One conventional PWM channel for three seconds
 rosrun radxa pwm_test 10 0 500 0.5
 
@@ -110,6 +119,12 @@ rosrun radxa pwm_test 10 0 500 0.5
 catkin run_tests radxa
 catkin_test_results
 ```
+
+The DShot ports do not use servo-style minimum/maximum pulse widths. In the
+spinal-compatible normalized command, `0.5` or lower sends DShot stop (`0`),
+values just above `0.5` start at the legal DShot throttle minimum (`48`), and
+`1.0` maps to the maximum (`2047`). The packed 1.6 MHz waveform and its leading
+low preamble were bench-verified with Bluejay 0.19.2 on a JH40 target.
 
 Inspect ROS output with:
 
@@ -119,8 +134,8 @@ rostopic echo /crobat/battery_voltage_status
 ```
 
 `set_adc_scale` retains spinal's meaning: battery volts per raw ADS1015 count.
-For example, publish a calibrated value with
-`rostopic pub -1 /crobat/set_adc_scale std_msgs/Float32 'data: 0.0061'`.
+For example, publish the currently calibrated value with
+`rostopic pub -1 /crobat/set_adc_scale std_msgs/Float32 'data: 0.0121'`.
 The value is mirrored to the ROS parameter server but is not written back to
 the YAML file.
 

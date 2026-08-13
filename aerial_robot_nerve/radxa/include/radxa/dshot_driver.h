@@ -11,7 +11,7 @@ namespace radxa
 class DshotDriver
 {
 public:
-  explicit DshotDriver(std::string spi_device, uint32_t spi_speed_hz = 2400000);
+  explicit DshotDriver(std::string spi_device, uint32_t spi_speed_hz = 1600000);
   ~DshotDriver();
 
   bool open();
@@ -22,6 +22,10 @@ public:
 
   static uint16_t makePacket(uint16_t value, bool telemetry);
   static std::array<uint8_t, 18> encodePacket(uint16_t packet);
+  static std::array<uint8_t, 7> encodePacket3Bit(uint16_t packet);
+  static std::array<uint8_t, 11> encodePacket5BitLowDuty(uint16_t packet);
+  static std::array<uint8_t, 11> encodePacketCompact(uint16_t packet);
+  static std::array<uint8_t, 12> encodePacketCompactPadded(uint16_t packet);
 
 private:
   struct Impl;

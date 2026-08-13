@@ -30,7 +30,7 @@ struct RadxaBoardConfig
 
   // One independent SPI controller/MOSI output is required per DShot channel.
   std::vector<std::string> dshot_spi_devices;
-  uint32_t dshot_spi_speed_hz{2400000};
+  uint32_t dshot_spi_speed_hz{1600000};
   bool require_all_dshot_channels{false};
 
   // Physical output ports 5..8. Defaults retain the mapping from the

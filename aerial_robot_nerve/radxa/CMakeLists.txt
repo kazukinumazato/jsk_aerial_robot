@@ -51,6 +51,15 @@ target_link_libraries(imu_test radxa_hw ${catkin_LIBRARIES})
 add_executable(adc_test src/adc_test.cpp)
 target_link_libraries(adc_test radxa_hw ${catkin_LIBRARIES})
 
+add_executable(dshot_test src/dshot_test.cpp)
+target_link_libraries(dshot_test radxa_hw ${catkin_LIBRARIES})
+
+add_executable(dshot_beacon_test src/dshot_beacon_test.cpp)
+target_link_libraries(dshot_beacon_test radxa_hw ${catkin_LIBRARIES})
+
+add_executable(dshot_arm_test src/dshot_arm_test.cpp)
+target_link_libraries(dshot_arm_test radxa_hw ${catkin_LIBRARIES})
+
 add_executable(pwm_test src/pwm_test.cpp)
 target_link_libraries(pwm_test radxa_hw ${catkin_LIBRARIES})
 
@@ -61,7 +70,8 @@ if(CATKIN_ENABLE_TESTING)
   endif()
 endif()
 
-install(TARGETS radxa_hw radxa_spinal_node imu_test adc_test pwm_test
+install(TARGETS radxa_hw radxa_spinal_node imu_test adc_test dshot_test
+  dshot_beacon_test dshot_arm_test pwm_test
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

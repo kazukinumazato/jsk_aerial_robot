@@ -261,7 +261,13 @@ private:
   }
 
 #ifdef SIMULATION
-  uint32_t HAL_GetTick(){ return ros::Time::now().toSec() * 1000; }
+  uint32_t HAL_GetTick()
+  {
+    // Convert as integer first. Wall-clock epoch milliseconds exceed uint32;
+    // unsigned narrowing then gives the same defined wraparound as the MCU
+    // tick counter, while double-to-uint32 overflow is undefined.
+    return static_cast<uint32_t>(ros::Time::now().toNSec() / 1000000ULL);
+  }
 public:
   float DELTA_T;
   double prev_time_;

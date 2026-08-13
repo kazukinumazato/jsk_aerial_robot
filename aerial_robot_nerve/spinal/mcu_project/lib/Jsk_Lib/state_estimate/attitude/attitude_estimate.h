@@ -238,7 +238,10 @@ private:
 
 #else
   ap::Vector3f acc_, mag_, gyro_;
-  uint32_t HAL_GetTick(){ return ros::Time::now().toSec() * 1000; }
+  uint32_t HAL_GetTick()
+  {
+    return static_cast<uint32_t>(ros::Time::now().toNSec() / 1000000ULL);
+  }
 #endif
 
   uint32_t last_imu_pub_time_, last_attitude_pub_time_;

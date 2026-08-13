@@ -195,8 +195,13 @@ private:
     next_voltage_read_ = now + ros::WallDuration(1.0 / voltage_read_rate_hz_);
 
     float voltage = 0.0F;
-    if (!board_.readBatteryVoltage(voltage) || voltage <= 0.0F) {
+    if (!board_.readBatteryVoltage(voltage)) {
       ROS_WARN_THROTTLE(1.0, "failed to read ADS1015 battery voltage");
+      return;
+    }
+    if (voltage <= 0.0F) {
+      ROS_WARN_THROTTLE(1.0,
+                        "ADS1015 battery input is zero or negative");
       return;
     }
     if (!voltage_valid_) {
