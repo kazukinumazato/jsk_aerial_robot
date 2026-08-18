@@ -75,7 +75,8 @@
   <include file="$(find aerial_robot_model)/launch/aerial_robot_model.launch" >
     <arg name="headless" value="$(arg headless)" />
     <arg name="robot_model" value="$(find crobat)/urdf/robot.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and not arg('full_actuated'))"/>
-    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and arg('full_actuated'))"/>
+    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and arg('full_actuated') and arg('flight_controller_backend') == 'spinal')"/>
+    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.radxa.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and arg('full_actuated') and arg('flight_controller_backend') == 'radxa')"/>
     <arg name="robot_model" value="$(arg direct_model_name)" if="$(arg direct_model)"/>
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="rviz_config" value="$(arg config_dir)/full_actuated/rviz_config" if="$(arg full_actuated)" />

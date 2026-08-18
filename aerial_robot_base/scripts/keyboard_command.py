@@ -1,12 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function # for print function in python2
-import sys, select, termios, tty
+import select
+import socket
+import sys
+import termios
+import tty
 
 import rospy
 from std_msgs.msg import Empty
 from aerial_robot_msgs.msg import FlightNav
 import rosgraph
+from rostopic import ROSTopicIOException
 
 
 
@@ -154,5 +159,4 @@ if __name__=="__main__":
                 print(repr(e))
         finally:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-
 
