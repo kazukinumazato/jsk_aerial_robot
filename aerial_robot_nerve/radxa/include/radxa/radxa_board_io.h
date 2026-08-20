@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -31,6 +32,7 @@ struct RadxaBoardConfig
   // One independent SPI controller/MOSI output is required per DShot channel.
   std::vector<std::string> dshot_spi_devices;
   uint32_t dshot_spi_speed_hz{1600000};
+  std::array<bool, 4> dshot_reversed{{false, false, false, false}};
   bool require_all_dshot_channels{false};
 
   // Physical output ports 5..8. Defaults retain the mapping from the
@@ -59,6 +61,15 @@ public:
   static uint16_t normalizedToDshot(float value, bool enabled);
 
 private:
+  enum class DshotDirectionState
+  {
+    Disarmed,
+    PreArmStop,
+    SendCommand,
+    PostCommandStop,
+    Ready
+  };
+
   void stopDshotOutputs();
 
   RadxaBoardConfig config_;
@@ -67,6 +78,11 @@ private:
   Ads1015 adc_;
   std::vector<std::unique_ptr<DshotDriver>> dshot_;
   std::array<std::unique_ptr<PwmDriver>, 4> pwm_;
+  DshotDirectionState direction_state_{DshotDirectionState::Disarmed};
+  std::chrono::steady_clock::time_point direction_deadline_{};
+  std::size_t direction_command_frames_sent_{0};
+  bool direction_command_for_arm_{false};
+  bool last_dshot_enabled_{false};
   bool initialized_{false};
 };
 

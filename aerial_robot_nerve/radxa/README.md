@@ -126,6 +126,20 @@ values just above `0.5` start at the legal DShot throttle minimum (`48`), and
 `1.0` maps to the maximum (`2047`). The packed 1.6 MHz waveform and its leading
 low preamble were bench-verified with Bluejay 0.19.2 on a JH40 target.
 
+Set the runtime direction of DShot ports 1–4 independently in
+`config/cubie_a7z.yaml`:
+
+```yaml
+dshot_reversed: [false, true, false, true]
+```
+
+`false` sends Bluejay command 7 (absolute normal) and `true` sends command 8
+(absolute reversed). The backend holds every motor at stop for one second on
+each arm edge, sends ten direction-command frames, waits another 100 ms, and
+only then permits throttle. It also refreshes the commands while disarmed so an
+ESC powered after the ROS node can still receive its setting. These commands
+change runtime RAM only and do not repeatedly write the ESC EEPROM.
+
 Inspect ROS output with:
 
 ```bash

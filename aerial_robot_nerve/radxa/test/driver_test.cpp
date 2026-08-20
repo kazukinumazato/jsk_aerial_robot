@@ -54,6 +54,8 @@ TEST(Dshot, GeneratesChecksumAndSpiWaveform)
   EXPECT_EQ(radxa::DshotDriver::makePacket(48, false), 0x0606);
   EXPECT_EQ(radxa::DshotDriver::makePacket(248, false), 0x1f0e);
   EXPECT_EQ(radxa::DshotDriver::makePacket(0, false), 0x0000);
+  EXPECT_EQ(radxa::DshotDriver::makePacket(7, true), 0x00ff);
+  EXPECT_EQ(radxa::DshotDriver::makePacket(8, true), 0x0110);
 
   const auto zero = radxa::DshotDriver::encodePacket(0x0000);
   for (std::size_t i = 0; i < 16; ++i) {

@@ -17,6 +17,7 @@ public:
   bool open();
   void close();
   bool writeValue(uint16_t value, bool telemetry = false);
+  bool writeDirectionCommand(bool reversed);
   bool writeStop();
   bool isOpen() const;
 

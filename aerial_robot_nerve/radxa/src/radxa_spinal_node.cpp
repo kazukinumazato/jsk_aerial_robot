@@ -66,6 +66,7 @@ radxa::RadxaBoardConfig loadBoardConfig(ros::NodeHandle& pnh)
   int dshot_speed = static_cast<int>(config.dshot_spi_speed_hz);
   pnh.param("dshot_spi_speed_hz", dshot_speed, dshot_speed);
   config.dshot_spi_speed_hz = static_cast<uint32_t>(dshot_speed);
+  loadArray(pnh, "dshot_reversed", config.dshot_reversed);
   pnh.param("require_all_dshot_channels", config.require_all_dshot_channels,
             config.require_all_dshot_channels);
 

@@ -7,6 +7,21 @@
 
 namespace radxa
 {
+namespace
+{
+constexpr std::size_t kDirectionCommandFrames = 10;
+constexpr auto kDirectionStartupStop = std::chrono::milliseconds(500);
+constexpr auto kDirectionPreArmStop = std::chrono::milliseconds(1000);
+constexpr auto kDirectionPostCommandStop = std::chrono::milliseconds(100);
+constexpr auto kDirectionRefreshPeriod = std::chrono::seconds(2);
+
+enum class DshotFrameMode
+{
+  Stop,
+  Direction,
+  Throttle
+};
+}  // namespace
 
 RadxaBoardIo::RadxaBoardIo(RadxaBoardConfig config)
   : config_(std::move(config)),
@@ -48,6 +63,9 @@ bool RadxaBoardIo::init()
       }
       std::cerr << "DShot output " << (i + 1) << " is disabled" << std::endl;
     }
+    std::cout << "DShot output " << (i + 1) << " requested direction: "
+              << (config_.dshot_reversed[i] ? "reversed" : "normal")
+              << std::endl;
     dshot_.push_back(std::move(driver));
   }
   if (config_.require_all_dshot_channels && dshot_.size() != 4) {
@@ -69,6 +87,12 @@ bool RadxaBoardIo::init()
   }
 
   initialized_ = true;
+  direction_state_ = DshotDirectionState::Disarmed;
+  direction_deadline_ = std::chrono::steady_clock::now() +
+                        kDirectionStartupStop;
+  direction_command_frames_sent_ = 0;
+  direction_command_for_arm_ = false;
+  last_dshot_enabled_ = false;
   // Leave the PWM channels enabled for the first servo update. stopOutputs()
   // disables them and is reserved for shutdown; only DShot needs an explicit
   // stop frame here.
@@ -114,11 +138,94 @@ bool RadxaBoardIo::setMotorOutputs(const float* values, std::size_t count,
   }
   bool success = true;
 
+  const auto now = std::chrono::steady_clock::now();
+  if (dshot_enabled && !last_dshot_enabled_) {
+    // Never pass throttle on an arm edge until every ESC has had enough stop
+    // frames to arm and has received a fresh direction command burst.
+    direction_state_ = DshotDirectionState::PreArmStop;
+    direction_deadline_ = now + kDirectionPreArmStop;
+    direction_command_frames_sent_ = 0;
+    direction_command_for_arm_ = true;
+    std::cout << "DShot arm gate: holding stop before direction commands"
+              << std::endl;
+  } else if (!dshot_enabled && last_dshot_enabled_) {
+    direction_state_ = DshotDirectionState::Disarmed;
+    direction_deadline_ = now + kDirectionStartupStop;
+    direction_command_frames_sent_ = 0;
+    direction_command_for_arm_ = false;
+  }
+  last_dshot_enabled_ = dshot_enabled;
+
+  DshotFrameMode dshot_mode = DshotFrameMode::Stop;
+  if (dshot_enabled) {
+    if (direction_state_ == DshotDirectionState::PreArmStop &&
+        now >= direction_deadline_) {
+      direction_state_ = DshotDirectionState::SendCommand;
+      direction_command_frames_sent_ = 0;
+      direction_command_for_arm_ = true;
+    }
+    if (direction_state_ == DshotDirectionState::SendCommand &&
+        direction_command_for_arm_) {
+      dshot_mode = DshotFrameMode::Direction;
+    } else if (direction_state_ == DshotDirectionState::PostCommandStop) {
+      if (now >= direction_deadline_) {
+        direction_state_ = DshotDirectionState::Ready;
+        dshot_mode = DshotFrameMode::Throttle;
+        std::cout << "DShot direction command burst sent; throttle enabled"
+                  << std::endl;
+      }
+    } else if (direction_state_ == DshotDirectionState::Ready) {
+      dshot_mode = DshotFrameMode::Throttle;
+    }
+  } else {
+    if (direction_state_ != DshotDirectionState::Disarmed &&
+        !(direction_state_ == DshotDirectionState::SendCommand &&
+          !direction_command_for_arm_)) {
+      direction_state_ = DshotDirectionState::Disarmed;
+      direction_deadline_ = now + kDirectionStartupStop;
+      direction_command_frames_sent_ = 0;
+      direction_command_for_arm_ = false;
+    }
+    if (direction_state_ == DshotDirectionState::Disarmed &&
+        now >= direction_deadline_) {
+      direction_state_ = DshotDirectionState::SendCommand;
+      direction_command_frames_sent_ = 0;
+      direction_command_for_arm_ = false;
+    }
+    if (direction_state_ == DshotDirectionState::SendCommand &&
+        !direction_command_for_arm_) {
+      dshot_mode = DshotFrameMode::Direction;
+    }
+  }
+
   for (std::size_t i = 0; i < dshot_.size(); ++i) {
     const float value = i < count ? values[i] : 0.5F;
-    if (dshot_[i]->isOpen() &&
-        !dshot_[i]->writeValue(normalizedToDshot(value, dshot_enabled))) {
-      success = false;
+    if (dshot_[i]->isOpen()) {
+      bool written = false;
+      if (dshot_mode == DshotFrameMode::Direction) {
+        written = dshot_[i]->writeDirectionCommand(config_.dshot_reversed[i]);
+      } else if (dshot_mode == DshotFrameMode::Throttle) {
+        written = dshot_[i]->writeValue(normalizedToDshot(value, true), false);
+      } else {
+        written = dshot_[i]->writeStop();
+      }
+      if (!written) {
+        success = false;
+      }
+    }
+  }
+
+  if (success && dshot_mode == DshotFrameMode::Direction) {
+    ++direction_command_frames_sent_;
+    if (direction_command_frames_sent_ >= kDirectionCommandFrames) {
+      direction_command_frames_sent_ = 0;
+      if (direction_command_for_arm_) {
+        direction_state_ = DshotDirectionState::PostCommandStop;
+        direction_deadline_ = now + kDirectionPostCommandStop;
+      } else {
+        direction_state_ = DshotDirectionState::Disarmed;
+        direction_deadline_ = now + kDirectionRefreshPeriod;
+      }
     }
   }
 

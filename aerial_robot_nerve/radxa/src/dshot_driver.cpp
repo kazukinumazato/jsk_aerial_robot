@@ -248,4 +248,14 @@ bool DshotDriver::writeStop()
   return writeValue(0, false);
 }
 
+bool DshotDriver::writeDirectionCommand(bool reversed)
+{
+  // Bluejay 0.19.2 commands 7/8 select absolute normal/reversed direction.
+  // Special DShot commands are valid only with the telemetry bit set and the
+  // caller must repeat them; RadxaBoardIo handles that sequence.
+  constexpr uint16_t kDirectionNormal = 7;
+  constexpr uint16_t kDirectionReversed = 8;
+  return writeValue(reversed ? kDirectionReversed : kDirectionNormal, true);
+}
+
 }  // namespace radxa
