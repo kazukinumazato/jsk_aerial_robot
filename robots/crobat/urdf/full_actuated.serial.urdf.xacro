@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
-<!-- Radxa Cubie A7Z real-machine description. -->
+<!-- Original spinal/rosserial real-machine description. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="crobat">
-  <xacro:arg name="base_mass" default="0.0666" />
-  <xacro:arg name="battery_mass" default="0.023" />
+  <xacro:arg name="base_mass" default="0.0566" />
+  <xacro:arg name="battery_mass" default="0.021" />
   <xacro:include filename="$(find crobat)/urdf/full_actuated.urdf.xacro" />
 </robot>

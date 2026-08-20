@@ -24,6 +24,26 @@ of the DShot arm state. Crobat's real-machine `FlightControl.yaml` enables
 `gimbal_calc_in_fc`, so this native attitude loop computes both motor thrust and
 tilt angles; the simulation YAML remains unchanged.
 
+## Crobat backend and URDF selection
+
+The full-actuated real-machine model is selected with the same `backend`
+argument as `bridge.launch`:
+
+```bash
+# Original spinal controller over rosserial
+roslaunch crobat bringup.launch full_actuated:=true backend:=serial
+
+# Cubie A7Z in-process controller
+roslaunch crobat bringup.launch full_actuated:=true backend:=radxa
+```
+
+The serial and Radxa entry points share the common geometry in
+`full_actuated.urdf.xacro`; their wrapper files retain the backend-specific
+base and battery masses. Gazebo has a separate entry point and is selected only
+when `simulation:=true`. `flight_controller_backend:=...` remains available as
+a compatibility override, and either hardware model path can be replaced with
+`serial_robot_model:=...` or `radxa_robot_model:=...`.
+
 ## Hardware constraints
 
 Linux PWM produces a repeating fixed-duty signal and cannot produce a DShot
@@ -53,6 +73,12 @@ ADS1015 `0x48`. Some ICM boards use `0x68`; change `imu_address` if necessary.
 The current breakout does not ACK its internal AK09916 in bypass mode, so
 `cubie_a7z.yaml` keeps `enable_magnetometer: false`; attitude control uses the
 working accel/gyro path. Enable it only after confirming address `0x0c` works.
+The ROS backend maps acceleration and angular velocity to Crobat's body frame
+with `imu_axis_sign: [1.0, -1.0, 1.0]`. Magnetometer mapping is independent and
+uses `mag_axis_sign: [1.0, -1.0, -1.0]`, preserving spinal's AK09916 Z
+reversal. The standalone `imu_test` reads the raw driver defaults and does not
+load these YAML mappings; the mapped values are the ones consumed by the
+attitude estimator in `radxa_spinal_node`.
 
 The ADS1015 board is not a high-voltage input. Add an external divider:
 

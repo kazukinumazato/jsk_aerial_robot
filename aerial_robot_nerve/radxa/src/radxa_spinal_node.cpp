@@ -47,6 +47,8 @@ radxa::RadxaBoardConfig loadBoardConfig(ros::NodeHandle& pnh)
             config.imu.require_magnetometer);
   loadArray(pnh, "imu_axis_map", config.imu.axis_map);
   loadArray(pnh, "imu_axis_sign", config.imu.axis_sign);
+  loadArray(pnh, "mag_axis_map", config.imu.mag_axis_map);
+  loadArray(pnh, "mag_axis_sign", config.imu.mag_axis_sign);
   loadArray(pnh, "accel_bias", config.imu.accel_bias);
   loadArray(pnh, "gyro_bias", config.imu.gyro_bias);
   loadArray(pnh, "mag_bias", config.imu.mag_bias);

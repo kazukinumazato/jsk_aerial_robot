@@ -19,7 +19,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   )
 
-install(DIRECTORY config launch
+install(DIRECTORY config launch urdf
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS
   )

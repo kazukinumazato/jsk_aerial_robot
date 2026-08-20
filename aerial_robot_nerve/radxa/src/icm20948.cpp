@@ -233,18 +233,22 @@ bool Icm20948::readMagnetometer(std::array<float, 3>& mag_tesla)
   return true;
 }
 
-void Icm20948::applyCalibration(ImuSample& sample) const
+void Icm20948::applyCalibration(const Config& config, ImuSample& sample)
 {
   const auto raw_acc = sample.acc_mps2;
   const auto raw_gyro = sample.gyro_radps;
   const auto raw_mag = sample.mag_tesla;
   for (std::size_t i = 0; i < 3; ++i) {
-    const int source = std::clamp(config_.axis_map[i], 0, 2);
-    const float sign = config_.axis_sign[i] < 0.0F ? -1.0F : 1.0F;
-    sample.acc_mps2[i] = sign * raw_acc[source] - config_.accel_bias[i];
-    sample.gyro_radps[i] = sign * raw_gyro[source] - config_.gyro_bias[i];
+    const int source = std::clamp(config.axis_map[i], 0, 2);
+    const float sign = config.axis_sign[i] < 0.0F ? -1.0F : 1.0F;
+    const int mag_source = std::clamp(config.mag_axis_map[i], 0, 2);
+    const float mag_sign =
+        config.mag_axis_sign[i] < 0.0F ? -1.0F : 1.0F;
+    sample.acc_mps2[i] = sign * raw_acc[source] - config.accel_bias[i];
+    sample.gyro_radps[i] = sign * raw_gyro[source] - config.gyro_bias[i];
     sample.mag_tesla[i] =
-        (sign * raw_mag[source] - config_.mag_bias[i]) * config_.mag_scale[i];
+        (mag_sign * raw_mag[mag_source] - config.mag_bias[i]) *
+        config.mag_scale[i];
   }
 }
 
@@ -263,7 +267,7 @@ bool Icm20948::read(ImuSample& sample)
       sample.mag_tesla = last_mag_tesla_;
     }
   }
-  applyCalibration(sample);
+  applyCalibration(config_, sample);
   return true;
 }
 

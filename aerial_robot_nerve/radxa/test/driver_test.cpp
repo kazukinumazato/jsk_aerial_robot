@@ -117,6 +117,23 @@ TEST(Icm20948, ConvertsConfiguredFullScaleValuesToSi)
   EXPECT_NEAR(sample.temperature_c, 21.0, 1e-5);
 }
 
+TEST(Icm20948, AppliesCrobatAxesAndIndependentMagnetometerAxes)
+{
+  radxa::Icm20948::Config config;
+  config.axis_sign = {{1.0F, -1.0F, 1.0F}};
+  config.mag_axis_sign = {{1.0F, -1.0F, -1.0F}};
+
+  radxa::ImuSample sample;
+  sample.acc_mps2 = {{1.0F, 2.0F, 3.0F}};
+  sample.gyro_radps = {{4.0F, 5.0F, 6.0F}};
+  sample.mag_tesla = {{7.0F, 8.0F, 9.0F}};
+  radxa::Icm20948::applyCalibration(config, sample);
+
+  EXPECT_EQ(sample.acc_mps2, (std::array<float, 3>{{1.0F, -2.0F, 3.0F}}));
+  EXPECT_EQ(sample.gyro_radps, (std::array<float, 3>{{4.0F, -5.0F, 6.0F}}));
+  EXPECT_EQ(sample.mag_tesla, (std::array<float, 3>{{7.0F, -8.0F, -9.0F}}));
+}
+
 TEST(Icm20948, RestoresPrimaryBusWhenMagnetometerBypassFails)
 {
   MagnetometerUnavailableI2c i2c;

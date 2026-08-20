@@ -22,7 +22,10 @@
   <arg name="mujoco" default="False" />
   <arg name="demo" default="True" />
   <arg name="full_actuated" default="True" />
-  <arg name="flight_controller_backend" default="radxa" />
+  <!-- Keep the backend spelling consistent with bridge.launch. The old
+       flight_controller_backend argument remains as a compatibility override. -->
+  <arg name="backend" default="radxa" />
+  <arg name="flight_controller_backend" default="$(arg backend)" />
   <arg name="radxa_config" default="$(find radxa)/config/cubie_a7z.yaml" />
   
   ###########  Parameters  ###########
@@ -70,13 +73,19 @@
   </node>
 
   ###########  Robot Model  ###########
-  <arg name="description_mode" value="urdf" unless="$(arg simulation)" />
-  <arg name="description_mode" value="gazebo" if="$(arg simulation)" />
+  <!-- Hardware descriptions are selected by backend. Gazebo remains a
+       separate simulation description and is never selected for real flight. -->
+  <arg name="serial_robot_model"
+       default="$(find crobat)/urdf/full_actuated.serial.urdf.xacro" />
+  <arg name="radxa_robot_model"
+       default="$(find crobat)/urdf/full_actuated.radxa.urdf.xacro" />
   <include file="$(find aerial_robot_model)/launch/aerial_robot_model.launch" >
     <arg name="headless" value="$(arg headless)" />
-    <arg name="robot_model" value="$(find crobat)/urdf/robot.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and not arg('full_actuated'))"/>
-    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and arg('full_actuated') and arg('flight_controller_backend') == 'spinal')"/>
-    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.radxa.$(arg description_mode).xacro" if="$(eval not arg('direct_model') and arg('full_actuated') and arg('flight_controller_backend') == 'radxa')"/>
+    <arg name="robot_model" value="$(find crobat)/urdf/robot.urdf.xacro" if="$(eval not arg('direct_model') and not arg('simulation') and not arg('full_actuated'))"/>
+    <arg name="robot_model" value="$(find crobat)/urdf/robot.gazebo.xacro" if="$(eval not arg('direct_model') and arg('simulation') and not arg('full_actuated'))"/>
+    <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.gazebo.xacro" if="$(eval not arg('direct_model') and arg('simulation') and arg('full_actuated'))"/>
+    <arg name="robot_model" value="$(arg serial_robot_model)" if="$(eval not arg('direct_model') and not arg('simulation') and arg('full_actuated') and arg('flight_controller_backend') == 'serial')"/>
+    <arg name="robot_model" value="$(arg radxa_robot_model)" if="$(eval not arg('direct_model') and not arg('simulation') and arg('full_actuated') and arg('flight_controller_backend') == 'radxa')"/>
     <arg name="robot_model" value="$(arg direct_model_name)" if="$(arg direct_model)"/>
     <arg name="robot_ns" value="$(arg robot_ns)" />
     <arg name="rviz_config" value="$(arg config_dir)/full_actuated/rviz_config" if="$(arg full_actuated)" />

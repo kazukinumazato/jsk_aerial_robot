@@ -6,9 +6,14 @@ imu_address: 0x69
 # internal AK09916 fails to ACK in bypass mode. Accel/gyro remain fully usable.
 enable_magnetometer: false
 require_magnetometer: false
-# Output-axis i reads input-axis imu_axis_map[i], multiplied by axis_sign[i].
+# Accel/gyro output-axis i reads input-axis imu_axis_map[i], multiplied by
+# imu_axis_sign[i]. Crobat's body/laboratory convention reverses sensor Y.
 imu_axis_map: [0, 1, 2]
-imu_axis_sign: [1.0, 1.0, 1.0]
+imu_axis_sign: [1.0, -1.0, 1.0]
+# The ICM-20948's internal AK09916 needs the additional Z reversal used by
+# spinal. Its Y also follows the Crobat body-frame reversal above.
+mag_axis_map: [0, 1, 2]
+mag_axis_sign: [1.0, -1.0, -1.0]
 accel_bias: [0.0, 0.0, 0.0]  # m/s^2, after axis mapping
 gyro_bias: [0.0, 0.0, 0.0]  # rad/s, after axis mapping
 mag_bias: [0.0, 0.0, 0.0]   # tesla, after axis mapping

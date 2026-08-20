@@ -1,6 +1,30 @@
 <?xml version="1.0"?>
 <robot
     xmlns:xacro="http://www.ros.org/wiki/xacro" name="crobat" >
+  <!-- Shared full-actuated geometry. Backend wrappers set only the physical
+       mass values which differ between the spinal and Cubie A7Z assemblies. -->
+  <xacro:arg name="base_mass" default="0.0566" />
+  <xacro:arg name="battery_mass" default="0.021" />
+
+  <xacro:macro name="extra_module" params="name parent *origin *inertial visible:=0 model_url:=1 scale:=1">
+    <joint name="${parent}2${name}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}"/>
+      <xacro:insert_block name="origin" />
+    </joint>
+    <link name="${name}">
+      <xacro:insert_block name="inertial" />
+      <xacro:if value="${visible == 1}">
+        <visual>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+          <geometry>
+            <mesh filename="${model_url}" scale="${scale} ${scale} ${scale}"/>
+          </geometry>
+        </visual>
+      </xacro:if>
+    </link>
+  </xacro:macro>
+
   <xacro:macro name="crobat_center_link" params="child1 child2 child3 child4">
     ## dummy
     <link name="root">
@@ -24,7 +48,7 @@
     <link name="base_link">
       <inertial>
         <origin xyz="0.0003 -0.0007 0.1399" rpy="0 0 0"/>
-        <mass value="0.0566"/>
+        <mass value="$(arg base_mass)"/>
         <inertia
             ixx="0.00008943" iyy="0.00008943" izz="0.00006466"
             ixy="-0.00000012" ixz="0.00000031" iyz="0.00000020"/>
@@ -66,7 +90,7 @@
     <xacro:extra_module name = "battery" parent = "base_link" visible = "1" model_url = "package://mini_quadrotor/urdf/mesh/turnigy_3S_2200mAh.dae" >
       <origin xyz="0.0 0 0.103" rpy="${pi/2} 0 0"/>
       <inertial>
-      <mass value = "0.021" />
+      <mass value="$(arg battery_mass)" />
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <inertia
             ixx="0.0002" ixy="0.0" ixz="0.0"
