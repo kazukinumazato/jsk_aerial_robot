@@ -8,6 +8,16 @@ GimbalrotorRobotModel::GimbalrotorRobotModel(bool init_with_rosparam, bool verbo
 
   links_rotation_from_cog_.resize(rotor_num);
   thrust_coords_rot_.resize(rotor_num);
+
+  /*
+   * A transformable model is not initialized by its base constructor because
+   * it normally waits for the first joint_states message. PWM-only gimbals
+   * have no measured joint feedback; without this initialization, mass and
+   * inertia remain zero and the controller's allocation matrix becomes
+   * non-finite at takeoff. Start from the neutral (all-zero joint) pose; later
+   * joint states still update it.
+   */
+  updateRobotModel();
 }
 
 void GimbalrotorRobotModel::updateRobotModelImpl(const KDL::JntArray& joint_positions)

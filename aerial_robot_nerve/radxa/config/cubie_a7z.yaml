@@ -58,6 +58,9 @@ pwm_frequency_hz: 500.0
 # These become normalized PWM duty values on physical ports 5..8.
 pwm_angle_range: 180.0
 pwm_initial_duty: [0.5, 0.5, 0.5, 0.5]
+# PWM servos have no angle sensor; publish the last command as an estimated
+# spinal-compatible servo state for robot-model updates.
+servo_state_rate_hz: 50.0
 
-control_rate_hz: 500.0
+control_rate_hz: 1000.0
 imu_timeout: 0.1

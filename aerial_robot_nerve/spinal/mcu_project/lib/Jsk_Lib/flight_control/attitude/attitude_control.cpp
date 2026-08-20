@@ -965,9 +965,28 @@ void AttitudeController::pwmConversion()
 {
   auto convert = [this](float target_thrust)
     {
+      if (!std::isfinite(target_thrust))
+        {
+#ifdef SIMULATION
+          ROS_ERROR_THROTTLE(1.0,
+                             "non-finite target thrust; using DShot stop");
+#endif
+          return IDLE_DUTY;
+        }
+
       float scaled_thrust = v_factor_ * target_thrust / rotor_devider_;
       float target_pwm = 0;
       if (scaled_thrust < 0) scaled_thrust = 0;
+
+      if (!std::isfinite(scaled_thrust))
+        {
+#ifdef SIMULATION
+          ROS_ERROR_THROTTLE(1.0,
+                             "non-finite voltage-compensated thrust; using "
+                             "DShot stop");
+#endif
+          return IDLE_DUTY;
+        }
 
       switch(pwm_conversion_mode_)
         {
@@ -975,7 +994,35 @@ void AttitudeController::pwmConversion()
           {
             /* pwm = F_inv[(V_ref / V)^2 f] */
             float sqrt_tmp = motor_info_[motor_ref_index_].polynominal[1] * motor_info_[motor_ref_index_].polynominal[1] - 4 * 10 * motor_info_[motor_ref_index_].polynominal[2] * (motor_info_[motor_ref_index_].polynominal[0] - scaled_thrust); //special decimal order shift (x10)
-            target_pwm = (-motor_info_[motor_ref_index_].polynominal[1] + sqrt_tmp * ap::inv_sqrt(sqrt_tmp)) / (2 * motor_info_[motor_ref_index_].polynominal[2]);
+            /*
+             * A finite thrust above the calibrated motor curve makes the
+             * discriminant negative.  The old expression then produced NaN,
+             * which the Radxa DShot backend correctly converted to a stop
+             * frame.  Saturate such a request at the configured maximum PWM;
+             * genuinely non-finite inputs remain stopped by the checks above.
+             */
+            if (!std::isfinite(sqrt_tmp)) return IDLE_DUTY;
+            if (sqrt_tmp <= 0)
+              {
+#ifdef SIMULATION
+                ROS_WARN_THROTTLE(
+                  1.0,
+                  "target thrust %.4f N (voltage-compensated %.4f N) "
+                  "exceeds the calibrated motor curve; saturating PWM at "
+                  "%.3f",
+                  target_thrust, scaled_thrust, max_duty_);
+#endif
+                return max_duty_;
+              }
+
+            const float denominator =
+              2 * motor_info_[motor_ref_index_].polynominal[2];
+            if (!std::isfinite(denominator) || fabs(denominator) < 1.0e-9f)
+              return IDLE_DUTY;
+
+            target_pwm =
+              (-motor_info_[motor_ref_index_].polynominal[1] +
+               sqrtf(sqrt_tmp)) / denominator;
             break;
           }
         case spinal::MotorInfo::POLYNOMINAL_MODE:
@@ -994,7 +1041,9 @@ void AttitudeController::pwmConversion()
             break;
           }
         }
-      return target_pwm / 100; // target_pwm is [%]
+      target_pwm /= 100; // target_pwm is [%]
+      if (!std::isfinite(target_pwm)) return IDLE_DUTY;
+      return target_pwm;
     };
 
   if(pwm_test_flag_) /* motor pwm test */
@@ -1062,6 +1111,26 @@ void AttitudeController::pwmConversion()
   float yaw_decreasing_rate = 0;
   float thrust_limit = motor_info_[motor_ref_index_].max_thrust / v_factor_;
 
+  /*
+   * motor_number_ counts virtual thrust components for a gimballed rotor
+   * (e.g. x/z for one-DoF), while the loops below count physical rotors.
+   * Always reduce a physical rotor to the norm of all of its components.
+   * Indexing a component array with the physical rotor index was incorrect
+   * for rotor_coef_ > 1 and could divide by a zero x component at takeoff.
+   */
+  auto componentNorm = [this](const float* terms, int rotor_index)
+    {
+      float squared_norm = 0;
+      const int first = rotor_coef_ * rotor_index;
+      for(int component = 0; component < rotor_coef_; component++)
+        {
+          const float value = terms[first + component];
+          if (!std::isfinite(value)) return 0.0f;
+          squared_norm += value * value;
+        }
+      return sqrtf(squared_norm);
+    };
+
   /* check saturation level 2: z control saturation */
   float max_thrust = 0;
   int max_thrust_index = 0;
@@ -1092,14 +1161,27 @@ void AttitudeController::pwmConversion()
     {
       float residual_term = thrust_limit - max_thrust / rotor_devider_;
 
-      if(residual_term < 0 && base_thrust_term_[max_thrust_index] > 0)
+      const float limiting_base_thrust =
+        componentNorm(base_thrust_term_, max_thrust_index) / rotor_devider_;
+      if(residual_term < 0 && limiting_base_thrust > 1.0e-6f)
         {
-          base_thrust_decreasing_rate = residual_term / (base_thrust_term_[max_thrust_index] / rotor_devider_);
+          base_thrust_decreasing_rate = residual_term / limiting_base_thrust;
+          if(base_thrust_decreasing_rate < -1)
+            base_thrust_decreasing_rate = -1;
+          if(base_thrust_decreasing_rate > 0)
+            base_thrust_decreasing_rate = 0;
           yaw_decreasing_rate = -1; // also, we have to ignore the yaw control
+        }
+      else if(residual_term < 0)
+        {
+          /* No finite base component is available to reduce safely. */
+          base_thrust_decreasing_rate = -1;
+          yaw_decreasing_rate = -1;
         }
       else
         {
-          if(max_yaw_term_index_ != -1 && fabs(base_thrust_term_[0]) > 0 )
+          if(max_yaw_term_index_ != -1 &&
+             componentNorm(base_thrust_term_, 0) > 0)
             {
               /* check saturation level1: yaw control saturation */
               max_thrust = 0;
@@ -1150,7 +1232,12 @@ void AttitudeController::pwmConversion()
 
               if(residual_term < 0)
                 {
-                  yaw_decreasing_rate = residual_term / (fabs(yaw_term_[thrust_index]) / rotor_devider_);
+                  const float limiting_yaw_thrust =
+                    componentNorm(yaw_term_, thrust_index) / rotor_devider_;
+                  if(limiting_yaw_thrust > 1.0e-6f)
+                    yaw_decreasing_rate = residual_term / limiting_yaw_thrust;
+                  else
+                    yaw_decreasing_rate = -1;
                 }
 
               if(yaw_decreasing_rate < -1) yaw_decreasing_rate = -1;

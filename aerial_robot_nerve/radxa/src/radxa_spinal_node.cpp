@@ -1,5 +1,6 @@
 #include <array>
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -8,6 +9,7 @@
 #include <std_msgs/Float32.h>
 #include <spinal/PwmTest.h>
 #include <spinal/ServoControlCmd.h>
+#include <spinal/ServoStates.h>
 #include <spinal/ServoTorqueCmd.h>
 
 #include <flight_control/flight_control.h>
@@ -108,10 +110,15 @@ public:
     pnh_.param("voltage_read_rate_hz", voltage_read_rate_hz_, 50.0);
     pnh_.param("voltage_filter_alpha", voltage_filter_alpha_, 0.01F);
     pnh_.param("pwm_angle_range", pwm_angle_range_, 180.0F);
+    pnh_.param("servo_state_rate_hz", servo_state_rate_hz_, 50.0);
     loadArray(pnh_, "pwm_initial_duty", servo_duty_);
     voltage_filter_alpha_ = std::clamp(voltage_filter_alpha_, 0.0F, 1.0F);
     if (pwm_angle_range_ <= 0.0F) {
       ROS_FATAL("~pwm_angle_range must be positive");
+      return false;
+    }
+    if (servo_state_rate_hz_ <= 0.0) {
+      ROS_FATAL("~servo_state_rate_hz must be positive");
       return false;
     }
     for (float& duty : servo_duty_) {
@@ -149,9 +156,11 @@ public:
         &RadxaSpinalNode::servoControlCallback, this);
     servo_torque_sub_ = nh_.subscribe("extra_servo_torque_enable", 1,
         &RadxaSpinalNode::servoTorqueCallback, this);
+    servo_state_pub_ = nh_.advertise<spinal::ServoStates>("servo/states", 1);
 
     last_imu_success_ = ros::SteadyTime::now();
     next_voltage_read_ = ros::SteadyTime::now();
+    next_servo_state_publish_ = ros::SteadyTime::now();
     ROS_INFO_STREAM("radxa spinal node ready: " << board_.dshotChannelCount()
                     << "/4 DShot channels configured");
     return true;
@@ -178,6 +187,7 @@ public:
       }
 
       updateBattery();
+      publishServoStates();
       controller_.update();
 
       const bool imu_healthy =
@@ -191,8 +201,18 @@ public:
         }
       } else {
         std::array<float, 8> outputs{};
+        bool controller_output_valid = true;
         for (std::size_t i = 0; i < 4; ++i) {
           outputs[i] = controller_.getAttController().getPwm(i);
+          controller_output_valid =
+              controller_output_valid && std::isfinite(outputs[i]);
+        }
+        if (!controller_output_valid) {
+          ROS_ERROR_THROTTLE(
+              1.0,
+              "non-finite attitude-controller PWM: [%g, %g, %g, %g]; "
+              "DShot stop is being sent",
+              outputs[0], outputs[1], outputs[2], outputs[3]);
         }
         fillServoOutputs(outputs);
         if (!board_.setMotorOutputs(outputs.data(), outputs.size(),
@@ -293,6 +313,41 @@ private:
     }
   }
 
+  void publishServoStates()
+  {
+    const ros::SteadyTime now = ros::SteadyTime::now();
+    if (now < next_servo_state_publish_) {
+      return;
+    }
+    next_servo_state_publish_ =
+        now + ros::WallDuration(1.0 / servo_state_rate_hz_);
+
+    /*
+     * Ports 5..8 are ordinary PWM outputs and therefore have no position
+     * feedback. Report the last commanded angle as the estimated state so the
+     * existing spinal-compatible path
+     *
+     *   servo/states -> servo_bridge -> joint_states -> robot model
+     *
+     * remains active. Crobat's Servo.yaml uses servo IDs 1..4, while the
+     * Radxa output ports themselves are addressed as 4..7.
+     */
+    spinal::ServoStates message;
+    message.stamp = ros::Time::now();
+    message.servos.resize(servo_duty_.size());
+    for (std::size_t i = 0; i < servo_duty_.size(); ++i) {
+      spinal::ServoState& state = message.servos[i];
+      state.index = static_cast<uint8_t>(i + 1);
+      state.angle = static_cast<int16_t>(
+          std::lround(std::clamp(servo_duty_[i], 0.0F, 1.0F) *
+                      pwm_angle_range_));
+      state.temp = 0;
+      state.load = 0;
+      state.error = 0;
+    }
+    servo_state_pub_.publish(message);
+  }
+
   void fillServoOutputs(std::array<float, 8>& outputs) const
   {
     for (std::size_t i = 0; i < servo_duty_.size(); ++i) {
@@ -307,6 +362,7 @@ private:
   FlightControl controller_;
 
   ros::Publisher battery_pub_;
+  ros::Publisher servo_state_pub_;
   ros::Subscriber adc_scale_sub_;
   ros::Subscriber pwm_test_sub_;
   ros::Subscriber servo_control_sub_;
@@ -321,12 +377,14 @@ private:
   float voltage_filter_alpha_{0.01F};
   float filtered_voltage_{0.0F};
   float pwm_angle_range_{180.0F};
+  double servo_state_rate_hz_{50.0};
   bool voltage_valid_{false};
   bool pwm_test_active_{false};
   std::array<float, 4> servo_duty_{{0.5F, 0.5F, 0.5F, 0.5F}};
   std::array<bool, 4> servo_enabled_{{true, true, true, true}};
   ros::SteadyTime last_imu_success_;
   ros::SteadyTime next_voltage_read_;
+  ros::SteadyTime next_servo_state_publish_;
   ros::SteadyTime last_voltage_publish_;
 };
 

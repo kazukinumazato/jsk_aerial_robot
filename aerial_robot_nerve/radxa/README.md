@@ -24,6 +24,11 @@ of the DShot arm state. Crobat's real-machine `FlightControl.yaml` enables
 `gimbal_calc_in_fc`, so this native attitude loop computes both motor thrust and
 tilt angles; the simulation YAML remains unchanged.
 
+Because ordinary PWM provides no position feedback, the Radxa node publishes
+the last commanded servo angles on `servo/states` (50 Hz by default). This is a
+commanded-state estimate, not a measured angle. It keeps the existing
+`servo_bridge`/`joint_states` robot-model update path compatible with spinal.
+
 ## Crobat backend and URDF selection
 
 The full-actuated real-machine model is selected with the same `backend`
