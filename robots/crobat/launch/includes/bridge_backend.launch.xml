@@ -2,6 +2,8 @@
 <launch>
   <arg name="backend" />
   <arg name="radxa_config" />
+  <arg name="imu_zero_on_startup" />
+  <arg name="imu_zero_duration_sec" />
   <arg name="serial_port" />
   <arg name="serial_baud" />
   <arg name="udp_port" />
@@ -11,6 +13,8 @@
            if="$(eval arg('backend') == 'radxa')">
     <arg name="namespace" value="" />
     <arg name="config" value="$(arg radxa_config)" />
+    <arg name="imu_zero_on_startup" value="$(arg imu_zero_on_startup)" />
+    <arg name="imu_zero_duration_sec" value="$(arg imu_zero_duration_sec)" />
   </include>
 
   <include file="$(find spinal)/launch/bridge.launch"

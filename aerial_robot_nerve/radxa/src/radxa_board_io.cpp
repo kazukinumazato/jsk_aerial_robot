@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <thread>
 #include <utility>
 
 namespace radxa
@@ -103,6 +104,49 @@ bool RadxaBoardIo::init()
 bool RadxaBoardIo::readImu(ImuSample& sample)
 {
   return initialized_ && imu_.read(sample);
+}
+
+bool RadxaBoardIo::zeroImuGyro(double duration_sec, double sample_rate_hz,
+                               std::array<float, 3>& applied_bias)
+{
+  if (!initialized_ || !std::isfinite(duration_sec) ||
+      !std::isfinite(sample_rate_hz) || duration_sec <= 0.0 ||
+      sample_rate_hz <= 0.0) {
+    return false;
+  }
+
+  const auto sample_count = static_cast<std::size_t>(
+      std::max(1.0, std::round(duration_sec * sample_rate_hz)));
+  const auto period = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+      std::chrono::duration<double>(1.0 / sample_rate_hz));
+  std::array<double, 3> residual_sum{{0.0, 0.0, 0.0}};
+  auto next_sample = std::chrono::steady_clock::now();
+
+  for (std::size_t sample_index = 0; sample_index < sample_count;
+       ++sample_index) {
+    ImuSample sample;
+    if (!imu_.read(sample)) {
+      return false;
+    }
+    for (std::size_t axis = 0; axis < residual_sum.size(); ++axis) {
+      residual_sum[axis] += sample.gyro_radps[axis];
+    }
+    next_sample += period;
+    if (sample_index + 1 < sample_count) {
+      std::this_thread::sleep_until(next_sample);
+    }
+  }
+
+  std::array<float, 3> residual_bias{};
+  for (std::size_t axis = 0; axis < residual_bias.size(); ++axis) {
+    residual_bias[axis] = static_cast<float>(
+        residual_sum[axis] / static_cast<double>(sample_count));
+  }
+  // Samples above already have the YAML bias subtracted. Adding their mean
+  // therefore preserves any configured bias and removes the remaining offset.
+  imu_.addGyroBias(residual_bias);
+  applied_bias = imu_.gyroBias();
+  return true;
 }
 
 bool RadxaBoardIo::readBatteryVoltage(float& voltage)

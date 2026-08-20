@@ -32,6 +32,8 @@ public:
   bool init();
   bool read(ImuSample& sample);
   bool magnetometerAvailable() const;
+  void addGyroBias(const std::array<float, 3>& residual_bias);
+  const std::array<float, 3>& gyroBias() const;
 
   static void convertAccelGyro(const uint8_t* raw, ImuSample& sample);
   static void applyCalibration(const Config& config, ImuSample& sample);

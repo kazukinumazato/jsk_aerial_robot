@@ -276,4 +276,16 @@ bool Icm20948::magnetometerAvailable() const
   return magnetometer_available_;
 }
 
+void Icm20948::addGyroBias(const std::array<float, 3>& residual_bias)
+{
+  for (std::size_t i = 0; i < config_.gyro_bias.size(); ++i) {
+    config_.gyro_bias[i] += residual_bias[i];
+  }
+}
+
+const std::array<float, 3>& Icm20948::gyroBias() const
+{
+  return config_.gyro_bias;
+}
+
 }  // namespace radxa

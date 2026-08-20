@@ -134,6 +134,20 @@ TEST(Icm20948, AppliesCrobatAxesAndIndependentMagnetometerAxes)
   EXPECT_EQ(sample.mag_tesla, (std::array<float, 3>{{7.0F, -8.0F, -9.0F}}));
 }
 
+TEST(Icm20948, AddsStartupGyroResidualToConfiguredBias)
+{
+  MagnetometerUnavailableI2c i2c;
+  radxa::Icm20948::Config config;
+  config.gyro_bias = {{0.10F, -0.20F, 0.30F}};
+  radxa::Icm20948 imu(i2c, config);
+
+  imu.addGyroBias({{0.01F, 0.02F, -0.03F}});
+
+  EXPECT_NEAR(imu.gyroBias()[0], 0.11F, 1e-6F);
+  EXPECT_NEAR(imu.gyroBias()[1], -0.18F, 1e-6F);
+  EXPECT_NEAR(imu.gyroBias()[2], 0.27F, 1e-6F);
+}
+
 TEST(Icm20948, RestoresPrimaryBusWhenMagnetometerBypassFails)
 {
   MagnetometerUnavailableI2c i2c;

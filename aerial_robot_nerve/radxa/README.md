@@ -37,6 +37,20 @@ roslaunch crobat bringup.launch full_actuated:=true backend:=serial
 roslaunch crobat bringup.launch full_actuated:=true backend:=radxa
 ```
 
+Starting `crobat bridge.launch` with the Radxa backend keeps DShot stopped and
+averages the stationary gyroscope for three seconds before starting attitude
+estimation. Keep the vehicle completely still until `IMU gyro zero complete`
+appears. To change or explicitly disable this behavior:
+
+```bash
+roslaunch crobat bridge.launch backend:=radxa imu_zero_duration_sec:=5.0
+roslaunch crobat bridge.launch backend:=radxa imu_zero_on_startup:=false
+```
+
+Only the gyroscope is zeroed. Acceleration is not forced to zero because its
+stationary gravity vector is required to initialize roll and pitch. The
+calculated bias is runtime-only and is recalculated at every bridge start.
+
 The serial and Radxa entry points share the common geometry in
 `full_actuated.urdf.xacro`; their wrapper files retain the backend-specific
 base and battery masses. Gazebo has a separate entry point and is selected only

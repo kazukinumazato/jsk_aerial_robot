@@ -5,6 +5,10 @@
   <arg name="namespace" default="crobat" />
   <arg name="backend" default="radxa" />
   <arg name="radxa_config" default="$(find radxa)/config/cubie_a7z.yaml" />
+  <!-- Match spinal's three-second startup gyro calibration. Keep the vehicle
+       completely stationary until the zero-complete message is printed. -->
+  <arg name="imu_zero_on_startup" default="true" />
+  <arg name="imu_zero_duration_sec" default="3.0" />
 
   <!-- Compatibility path for the original separate spinal controller. -->
   <arg name="serial_port" default="/dev/flight_controller" />
@@ -16,6 +20,8 @@
            if="$(eval arg('namespace') == '')">
     <arg name="backend" value="$(arg backend)" />
     <arg name="radxa_config" value="$(arg radxa_config)" />
+    <arg name="imu_zero_on_startup" value="$(arg imu_zero_on_startup)" />
+    <arg name="imu_zero_duration_sec" value="$(arg imu_zero_duration_sec)" />
     <arg name="serial_port" value="$(arg serial_port)" />
     <arg name="serial_baud" value="$(arg serial_baud)" />
     <arg name="udp_port" value="$(arg udp_port)" />
@@ -26,6 +32,8 @@
     <include file="$(find crobat)/launch/includes/bridge_backend.launch.xml">
       <arg name="backend" value="$(arg backend)" />
       <arg name="radxa_config" value="$(arg radxa_config)" />
+      <arg name="imu_zero_on_startup" value="$(arg imu_zero_on_startup)" />
+      <arg name="imu_zero_duration_sec" value="$(arg imu_zero_duration_sec)" />
       <arg name="serial_port" value="$(arg serial_port)" />
       <arg name="serial_baud" value="$(arg serial_baud)" />
       <arg name="udp_port" value="$(arg udp_port)" />

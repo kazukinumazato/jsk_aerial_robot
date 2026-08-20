@@ -51,6 +51,8 @@ public:
   bool init() override;
   bool readImu(ImuSample& sample) override;
   bool readBatteryVoltage(float& voltage) override;
+  bool zeroImuGyro(double duration_sec, double sample_rate_hz,
+                   std::array<float, 3>& applied_bias);
   bool setMotorOutputs(const float* values, std::size_t count,
                        bool dshot_enabled) override;
   void stopOutputs() override;

@@ -102,6 +102,9 @@ public:
   {
     pnh_.param("control_rate_hz", control_rate_hz_, 500.0);
     pnh_.param("imu_timeout", imu_timeout_, 0.1);
+    pnh_.param("imu_zero_on_startup", imu_zero_on_startup_, true);
+    pnh_.param("imu_zero_duration_sec", imu_zero_duration_sec_, 3.0);
+    pnh_.param("imu_zero_sample_rate_hz", imu_zero_sample_rate_hz_, 500.0);
     pnh_.param("voltage_read_rate_hz", voltage_read_rate_hz_, 50.0);
     pnh_.param("voltage_filter_alpha", voltage_filter_alpha_, 0.01F);
     pnh_.param("pwm_angle_range", pwm_angle_range_, 180.0F);
@@ -118,6 +121,20 @@ public:
     if (!board_.init()) {
       ROS_FATAL("failed to initialize Cubie A7Z hardware");
       return false;
+    }
+
+    if (imu_zero_on_startup_) {
+      ROS_WARN_STREAM("IMU gyro zeroing: keep Crobat completely stationary for "
+                      << imu_zero_duration_sec_ << " seconds");
+      std::array<float, 3> applied_bias{};
+      if (!board_.zeroImuGyro(imu_zero_duration_sec_,
+                              imu_zero_sample_rate_hz_, applied_bias)) {
+        ROS_FATAL("failed to zero ICM-20948 gyroscope");
+        return false;
+      }
+      ROS_INFO_STREAM("IMU gyro zero complete; bias [rad/s] = ["
+                      << applied_bias[0] << ", " << applied_bias[1] << ", "
+                      << applied_bias[2] << "]");
     }
 
     estimator_.init(&nh_);
@@ -297,6 +314,9 @@ private:
 
   double control_rate_hz_{500.0};
   double imu_timeout_{0.1};
+  bool imu_zero_on_startup_{true};
+  double imu_zero_duration_sec_{3.0};
+  double imu_zero_sample_rate_hz_{500.0};
   double voltage_read_rate_hz_{50.0};
   float voltage_filter_alpha_{0.01F};
   float filtered_voltage_{0.0F};

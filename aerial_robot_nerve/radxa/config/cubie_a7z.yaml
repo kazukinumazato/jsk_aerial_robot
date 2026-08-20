@@ -18,6 +18,11 @@ accel_bias: [0.0, 0.0, 0.0]  # m/s^2, after axis mapping
 gyro_bias: [0.0, 0.0, 0.0]  # rad/s, after axis mapping
 mag_bias: [0.0, 0.0, 0.0]   # tesla, after axis mapping
 mag_scale: [1.0, 1.0, 1.0]
+# Match spinal startup behavior: average the stationary gyroscope for 3 s and
+# add the residual mean to gyro_bias on every radxa_spinal_node start.
+imu_zero_on_startup: true
+imu_zero_duration_sec: 3.0
+imu_zero_sample_rate_hz: 500.0
 
 adc_address: 0x48
 adc_channel: 0
