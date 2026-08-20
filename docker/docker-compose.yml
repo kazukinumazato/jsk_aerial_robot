@@ -1,0 +1,35 @@
+services:
+  jsk-aerial-robot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jsk-aerial-robot:noetic
+    container_name: jsk-aerial-robot
+    network_mode: host
+    privileged: true
+    volumes:
+      - /dev:/dev
+      - /sys:/sys
+      - /home/radxa/docker/jsk-aerial-robot/jsk_aerial_robot_ws/src:/root/ros/jsk_aerial_robot_ws/src
+      - ${SSH_AUTH_SOCK}:/ssh-agent
+      - jsk_aerial_robot_build:/root/ros/jsk_aerial_robot_ws/build
+      - jsk_aerial_robot_devel:/root/ros/jsk_aerial_robot_ws/devel
+      - jsk_aerial_robot_logs:/root/ros/jsk_aerial_robot_ws/logs
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+    ulimits:
+      rtprio: 90
+      memlock: -1
+    stdin_open: true
+    tty: true
+    # Motive multicast over Wi-Fi needs an IGMPv2 membership report on this
+    # access point. Keep refreshing it while the Radxa container is running.
+    command: >-
+      bash -lc "python3 -u
+      /root/ros/jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_base/scripts/send_igmp_report.py
+      --interval 60 & exec tail -f /dev/null"
+
+volumes:
+  jsk_aerial_robot_build:
+  jsk_aerial_robot_devel:
+  jsk_aerial_robot_logs:
