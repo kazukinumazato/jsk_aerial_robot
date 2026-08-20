@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM ros:noetic-ros-base-focal
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -17,18 +19,6 @@ RUN apt-get update && apt-get install -y \
     python3-vcstool \
     python3-pip \
     python-is-python3 \
-    ros-noetic-rqt-gui \
-    ros-noetic-rqt-gui-py \
-    ros-noetic-rospy \
-    ros-noetic-rostopic \
-    ros-noetic-xacro \
-    ros-noetic-robot-state-publisher \
-    ros-noetic-interactive-markers \
-    ros-noetic-eigen-conversions \
-    ros-noetic-tf2-eigen \
-    ros-noetic-tf-conversions \
-    ros-noetic-controller-manager \
-    ros-noetic-roslint \
     ros-noetic-jsk-tools \
     i2c-tools \
     emacs \
@@ -36,17 +26,6 @@ RUN apt-get update && apt-get install -y \
     tmux \
     net-tools \
     iputils-ping \
-    && rm -rf /var/lib/apt/lists/*
-
-# Transitive build/runtime dependencies required by the Crobat packages.
-# Keep these explicit so an existing catkin devel space does not hide missing
-# dependencies in a freshly built image.
-RUN apt-get update && apt-get install -y \
-    ros-noetic-angles \
-    ros-noetic-cv-bridge \
-    ros-noetic-geodesy \
-    ros-noetic-geographic-msgs \
-    ros-noetic-jsk-recognition-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 --branch ${C_PERIPHERY_VERSION} https://github.com/vsergeev/c-periphery.git /tmp/c-periphery && \
@@ -62,7 +41,43 @@ RUN git clone --depth 1 --branch ${C_PERIPHERY_VERSION} https://github.com/vserg
     ldconfig && \
     rm -rf /tmp/c-periphery
 
-RUN rosdep init || true
+RUN rosdep init || true && \
+    rosdep update --include-eol-distros
+
+# Resolve only the source packages needed by Crobat on the Cubie A7Z. The
+# selected package manifests are visible only for this BuildKit step, so source
+# code is neither sent to the builder nor copied into the image. Desktop
+# visualization/demo, simulation and GNSS packages are deliberately outside
+# this flight image.
+ARG CROBAT_RADXA_ROSDEP_SKIP_KEYS="aerial_robot_simulation ipython3 joint_state_publisher_gui joy jsk_rviz_plugins mujoco_ros_control ntrip_ros ros_numpy rviz smach_ros smach_viewer ublox_gps"
+RUN --mount=type=bind,source=jsk_aerial_robot_ws/src,target=/tmp/ros_src,readonly \
+    source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
+    export ROS_PACKAGE_PATH="/tmp/ros_src:${ROS_PACKAGE_PATH}" && \
+    apt-get update && \
+    rosdep install -y \
+      --from-paths \
+        /tmp/ros_src/kalman_filter \
+        /tmp/ros_src/mocap_optitrack \
+        /tmp/ros_src/rosserial/rosserial_msgs \
+        /tmp/ros_src/rosserial/rosserial_client \
+        /tmp/ros_src/rosserial/rosserial_server \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_msgs \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_nerve/spinal \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_nerve/radxa \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_model \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_estimation \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_control \
+        /tmp/ros_src/jsk_aerial_robot/aerial_robot_base \
+        /tmp/ros_src/jsk_aerial_robot/robots/gimbalrotor \
+        /tmp/ros_src/jsk_aerial_robot/robots/crobat \
+      --ignore-src \
+      --rosdistro "${ROS_DISTRO}" \
+      --dependency-types build \
+      --dependency-types buildtool \
+      --dependency-types build_export \
+      --dependency-types exec \
+      --skip-keys "${CROBAT_RADXA_ROSDEP_SKIP_KEYS}" && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /root/ros/jsk_aerial_robot_ws/src
 

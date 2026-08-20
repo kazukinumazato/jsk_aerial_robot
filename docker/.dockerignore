@@ -1,0 +1,47 @@
+# The dependency-install layer only needs the manifests for the headless
+# Crobat/Radxa package set. Keep every parent directory explicit: a recursive
+# negation such as "!**/" would unintentionally add the whole workspace back.
+**
+
+!Dockerfile
+!jsk_aerial_robot_ws
+!jsk_aerial_robot_ws/src
+
+!jsk_aerial_robot_ws/src/kalman_filter
+!jsk_aerial_robot_ws/src/kalman_filter/package.xml
+
+!jsk_aerial_robot_ws/src/mocap_optitrack
+!jsk_aerial_robot_ws/src/mocap_optitrack/package.xml
+
+!jsk_aerial_robot_ws/src/rosserial
+!jsk_aerial_robot_ws/src/rosserial/rosserial_msgs
+!jsk_aerial_robot_ws/src/rosserial/rosserial_msgs/package.xml
+!jsk_aerial_robot_ws/src/rosserial/rosserial_client
+!jsk_aerial_robot_ws/src/rosserial/rosserial_client/package.xml
+!jsk_aerial_robot_ws/src/rosserial/rosserial_server
+!jsk_aerial_robot_ws/src/rosserial/rosserial_server/package.xml
+
+!jsk_aerial_robot_ws/src/jsk_aerial_robot
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_msgs
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_msgs/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_nerve
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_nerve/spinal
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_nerve/spinal/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_nerve/radxa
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_nerve/radxa/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_model
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_model/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_estimation
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_estimation/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_control
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_control/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_base
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/aerial_robot_base/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/robots
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/robots/gimbalrotor
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/robots/gimbalrotor/package.xml
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/robots/crobat
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/robots/crobat/package.xml
+
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/docker
+!jsk_aerial_robot_ws/src/jsk_aerial_robot/docker/Dockerfile
