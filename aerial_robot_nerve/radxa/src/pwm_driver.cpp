@@ -1,6 +1,7 @@
 #include "radxa/pwm_driver.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 
 extern "C" {
@@ -57,23 +58,69 @@ namespace radxa
       return false;
     }
 
-    // A previous process may have left the channel enabled. Linux PWM does
-    // not permit changing the period on every driver while enabled.
-    pwm_disable(impl_->pwm);
-
-    // PWM sysfs attributes survive process restarts.  If a previous program
-    // left the channel inverted, a larger servo command produces a shorter
-    // high pulse and every servo moves in the opposite direction.  Always
-    // restore the active-high convention used by Spinal's ExtraServo output.
-    if (pwm_set_polarity(impl_->pwm, PWM_POLARITY_NORMAL) < 0) {
-      std::cerr << "pwm_set_polarity failed: " << pwm_errmsg(impl_->pwm)
+    // The Rockchip PWM driver returns EINVAL for some no-op sysfs writes
+    // (for example, disabling an already-disabled channel). Read each state
+    // first and only write attributes that actually need to change.
+    bool enabled = false;
+    if (pwm_get_enabled(impl_->pwm, &enabled) < 0) {
+      std::cerr << "pwm_get_enabled failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+    if (enabled && pwm_disable(impl_->pwm) < 0) {
+      std::cerr << "pwm_disable failed: " << pwm_errmsg(impl_->pwm)
                 << std::endl;
       close();
       return false;
     }
 
-    if (pwm_set_frequency(impl_->pwm, impl_->frequency_hz) < 0) {
-      std::cerr << "pwm_set_frequency failed: " << pwm_errmsg(impl_->pwm) << std::endl;
+    uint64_t duty_ns = 0;
+    if (pwm_get_duty_cycle_ns(impl_->pwm, &duty_ns) < 0) {
+      std::cerr << "pwm_get_duty_cycle failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+    if (duty_ns != 0 && pwm_set_duty_cycle_ns(impl_->pwm, 0) < 0) {
+      std::cerr << "pwm_set_duty_cycle failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+
+    uint64_t period_ns = 0;
+    if (pwm_get_period_ns(impl_->pwm, &period_ns) < 0) {
+      std::cerr << "pwm_get_period failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+    const uint64_t requested_period_ns = static_cast<uint64_t>(
+        std::llround(impl_->period_us * 1000.0));
+    if (period_ns != requested_period_ns &&
+        pwm_set_period_ns(impl_->pwm, requested_period_ns) < 0) {
+      std::cerr << "pwm_set_period failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+
+    // PWM sysfs attributes survive process restarts.  If a previous program
+    // left the channel inverted, a larger servo command produces a shorter
+    // high pulse and every servo moves in the opposite direction.  Always
+    // restore the active-high convention used by Spinal's ExtraServo output.
+    pwm_polarity_t polarity = PWM_POLARITY_NORMAL;
+    if (pwm_get_polarity(impl_->pwm, &polarity) < 0) {
+      std::cerr << "pwm_get_polarity failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+    if (polarity != PWM_POLARITY_NORMAL &&
+        pwm_set_polarity(impl_->pwm, PWM_POLARITY_NORMAL) < 0) {
+      std::cerr << "pwm_set_polarity failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
       close();
       return false;
     }
