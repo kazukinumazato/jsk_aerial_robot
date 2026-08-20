@@ -61,6 +61,17 @@ namespace radxa
     // not permit changing the period on every driver while enabled.
     pwm_disable(impl_->pwm);
 
+    // PWM sysfs attributes survive process restarts.  If a previous program
+    // left the channel inverted, a larger servo command produces a shorter
+    // high pulse and every servo moves in the opposite direction.  Always
+    // restore the active-high convention used by Spinal's ExtraServo output.
+    if (pwm_set_polarity(impl_->pwm, PWM_POLARITY_NORMAL) < 0) {
+      std::cerr << "pwm_set_polarity failed: " << pwm_errmsg(impl_->pwm)
+                << std::endl;
+      close();
+      return false;
+    }
+
     if (pwm_set_frequency(impl_->pwm, impl_->frequency_hz) < 0) {
       std::cerr << "pwm_set_frequency failed: " << pwm_errmsg(impl_->pwm) << std::endl;
       close();
