@@ -69,7 +69,10 @@ bool RadxaBoardIo::init()
   }
 
   initialized_ = true;
-  stopOutputs();
+  // Leave the PWM channels enabled for the first servo update. stopOutputs()
+  // disables them and is reserved for shutdown; only DShot needs an explicit
+  // stop frame here.
+  stopDshotOutputs();
   return true;
 }
 
@@ -135,16 +138,24 @@ bool RadxaBoardIo::setMotorOutputs(const float* values, std::size_t count,
   return success;
 }
 
-void RadxaBoardIo::stopOutputs()
+void RadxaBoardIo::stopDshotOutputs()
 {
   for (auto& driver : dshot_) {
     if (driver && driver->isOpen()) {
       driver->writeStop();
     }
   }
+}
+
+void RadxaBoardIo::stopOutputs()
+{
+  stopDshotOutputs();
   for (auto& driver : pwm_) {
     if (driver) {
-      driver->setDutyCycle(0.0);
+      // Do not command 0 degrees during shutdown. Keep the last duty value in
+      // the PWM controller and stop the waveform directly so the servo never
+      // sees a transient zero-duty command.
+      driver->disable();
     }
   }
 }

@@ -59,6 +59,8 @@ public:
   static uint16_t normalizedToDshot(float value, bool enabled);
 
 private:
+  void stopDshotOutputs();
+
   RadxaBoardConfig config_;
   I2cDriver i2c_;
   Icm20948 imu_;
