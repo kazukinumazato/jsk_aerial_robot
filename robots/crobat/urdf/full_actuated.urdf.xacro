@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
 <robot
     xmlns:xacro="http://www.ros.org/wiki/xacro" name="crobat" >
-  <!-- Shared full-actuated geometry. Backend wrappers set only the physical
-       mass values which differ between the spinal and Cubie A7Z assemblies. -->
+  <!-- Shared full-actuated geometry. Backend wrappers set the physical
+       properties which differ between the spinal and Cubie A7Z assemblies. -->
   <xacro:arg name="base_mass" default="0.0566" />
   <xacro:arg name="battery_mass" default="0.021" />
+  <xacro:arg name="fc_xyz" default="0.000 0.01575 0.14778" />
+  <xacro:arg name="fc_rpy" default="0 0 0" />
 
   <xacro:macro name="extra_module" params="name parent *origin *inertial visible:=0 model_url:=1 scale:=1">
     <joint name="${parent}2${name}" type="fixed">
@@ -82,7 +84,7 @@
     <joint name="fc_joint" type="fixed">
       <child link="fc"/>
       <parent link="base_link"/>
-      <origin rpy="0 0 0" xyz="0.000 0.01575 0.14778"/>
+      <origin rpy="$(arg fc_rpy)" xyz="$(arg fc_xyz)"/>
       <axis xyz="0 0 1"/>
     </joint>
 
