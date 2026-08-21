@@ -7,13 +7,14 @@ imu_address: 0x69
 enable_magnetometer: false
 require_magnetometer: false
 # Accel/gyro output-axis i reads input-axis imu_axis_map[i], multiplied by
-# imu_axis_sign[i]. Crobat's body/laboratory convention reverses sensor Y.
+# imu_axis_sign[i]. The Motive rigid-body axes and the mounted ICM-20948 axes
+# were measured to have the same right-handed x/y/z directions (2026-08-21).
 imu_axis_map: [0, 1, 2]
-imu_axis_sign: [1.0, -1.0, 1.0]
+imu_axis_sign: [1.0, 1.0, 1.0]
 # The ICM-20948's internal AK09916 needs the additional Z reversal used by
-# spinal. Its Y also follows the Crobat body-frame reversal above.
+# spinal. Magnetometer acquisition is currently disabled above.
 mag_axis_map: [0, 1, 2]
-mag_axis_sign: [1.0, -1.0, -1.0]
+mag_axis_sign: [1.0, 1.0, -1.0]
 accel_bias: [0.0, 0.0, 0.0]  # m/s^2, after axis mapping
 gyro_bias: [0.0, 0.0, 0.0]  # rad/s, after axis mapping
 mag_bias: [0.0, 0.0, 0.0]   # tesla, after axis mapping
