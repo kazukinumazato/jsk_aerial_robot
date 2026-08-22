@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <string>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <iostream>
 #include <limits>
@@ -44,6 +45,19 @@ namespace radxa
     if (impl_->fd < 0) {
       std::cerr << "device open failed: " << impl_->device << ": "
                 << std::strerror(errno) << std::endl;
+      return false;
+    }
+
+    // A second radxa_spinal_node would otherwise race register-bank changes on
+    // the ICM-20948 and write conflicting values to the same PWM sysfs files.
+    // Lock the shared I2C bus before any other board output is initialized.
+    if (::flock(impl_->fd, LOCK_EX | LOCK_NB) < 0) {
+      const int error = errno;
+      std::cerr << "I2C device is already in use: " << impl_->device << ": "
+                << std::strerror(error) << " (errno " << error << ")"
+                << std::endl;
+      ::close(impl_->fd);
+      impl_->fd = -1;
       return false;
     }
     std::cout << "device opened: " << impl_->device << std::endl;

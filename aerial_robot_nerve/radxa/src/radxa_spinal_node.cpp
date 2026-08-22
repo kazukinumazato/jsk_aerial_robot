@@ -1,8 +1,14 @@
 #include <array>
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
 #include <memory>
 #include <string>
+#include <sys/file.h>
+#include <unistd.h>
 #include <vector>
 
 #include <ros/ros.h>
@@ -19,6 +25,40 @@
 
 namespace
 {
+
+class ProcessLock
+{
+public:
+  bool acquire(const char* path)
+  {
+    fd_ = ::open(path, O_CREAT | O_RDWR | O_CLOEXEC, 0660);
+    if (fd_ < 0) {
+      std::cerr << "failed to open radxa_spinal lock " << path << ": "
+                << std::strerror(errno) << std::endl;
+      return false;
+    }
+    if (::flock(fd_, LOCK_EX | LOCK_NB) < 0) {
+      const int error = errno;
+      std::cerr << "another radxa_spinal_node is already running: "
+                << std::strerror(error) << " (errno " << error << ")"
+                << std::endl;
+      ::close(fd_);
+      fd_ = -1;
+      return false;
+    }
+    return true;
+  }
+
+  ~ProcessLock()
+  {
+    if (fd_ >= 0) {
+      ::close(fd_);
+    }
+  }
+
+private:
+  int fd_{-1};
+};
 
 template <typename T, std::size_t N>
 void loadArray(ros::NodeHandle& nh, const std::string& name,
@@ -392,6 +432,12 @@ private:
 
 int main(int argc, char** argv)
 {
+  // Acquire this before ros::init. A duplicate ROS node name can otherwise
+  // cause the master to stop the healthy instance before hardware init fails.
+  ProcessLock process_lock;
+  if (!process_lock.acquire("/tmp/radxa_spinal_node.lock")) {
+    return 1;
+  }
   ros::init(argc, argv, "radxa_spinal");
   RadxaSpinalNode node;
   if (!node.init()) {

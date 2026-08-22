@@ -102,8 +102,13 @@ bool Icm20948::readRegisters(uint8_t bank, uint8_t reg, uint8_t* data,
 bool Icm20948::init()
 {
   uint8_t who_am_i = 0;
-  if (!readRegister(kBank0, kWhoAmI, who_am_i) ||
-      who_am_i != kExpectedWhoAmI) {
+  if (!readRegister(kBank0, kWhoAmI, who_am_i)) {
+    std::cerr << "failed to read ICM-20948 WHO_AM_I at address 0x"
+              << std::hex << static_cast<int>(config_.address) << std::dec
+              << std::endl;
+    return false;
+  }
+  if (who_am_i != kExpectedWhoAmI) {
     std::cerr << "ICM-20948 WHO_AM_I mismatch: expected 0xea, got 0x"
               << std::hex << static_cast<int>(who_am_i) << std::dec << std::endl;
     return false;

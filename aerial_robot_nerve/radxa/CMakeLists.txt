@@ -5,6 +5,7 @@ add_compile_options(-std=c++17 -Wall -Wextra -Wpedantic)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rospy
   spinal
   std_msgs
   std_srvs
@@ -15,7 +16,7 @@ pkg_check_modules(PERIPHERY REQUIRED libperiphery)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES radxa_hw
-  CATKIN_DEPENDS roscpp spinal std_msgs std_srvs
+  CATKIN_DEPENDS roscpp rospy spinal std_msgs std_srvs
   DEPENDS PERIPHERY
 )
 
@@ -62,6 +63,11 @@ target_link_libraries(dshot_arm_test radxa_hw ${catkin_LIBRARIES})
 
 add_executable(pwm_test src/pwm_test.cpp)
 target_link_libraries(pwm_test radxa_hw ${catkin_LIBRARIES})
+
+catkin_install_python(PROGRAMS
+  scripts/servo_test.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(radxa_driver_test test/driver_test.cpp)

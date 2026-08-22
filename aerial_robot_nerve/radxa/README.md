@@ -52,6 +52,11 @@ roslaunch crobat bridge.launch backend:=radxa imu_zero_duration_sec:=5.0
 roslaunch crobat bridge.launch backend:=radxa imu_zero_on_startup:=false
 ```
 
+Run only one Radxa `bridge.launch` at a time. The backend takes a process lock
+before registering with the ROS master, then holds an exclusive lock on its I2C
+device. It rejects a second instance before it can replace the healthy ROS node
+or write to the shared PWM and DShot outputs.
+
 Only the gyroscope is zeroed. Acceleration is not forced to zero because its
 stationary gravity vector is required to initialize roll and pitch. The
 calculated bias is runtime-only and is recalculated at every bridge start.
@@ -159,6 +164,10 @@ rosrun radxa dshot_beacon_test /dev/spidev1.0
 
 # One conventional PWM channel for three seconds
 rosrun radxa pwm_test 10 0 500 0.5
+
+# Servos 1-4 in order: step to 60 deg, sweep to 120 deg in 3 s, then all 90 deg
+# Run this while crobat bridge.launch is active.
+rosrun radxa servo_test.py
 
 # Pure conversion/encoding tests (no hardware)
 catkin run_tests radxa
