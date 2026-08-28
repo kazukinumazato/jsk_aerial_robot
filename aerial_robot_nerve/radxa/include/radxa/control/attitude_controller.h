@@ -9,8 +9,8 @@
 #error "Please define __cplusplus, because this is a c++ based file "
 #endif
 
-#ifndef __ATTITUDE_CONTROL_H
-#define __ATTITUDE_CONTROL_H
+#ifndef __RADXA_ATTITUDE_CONTROLLER_H
+#define __RADXA_ATTITUDE_CONTROLLER_H
 
 #ifndef SIMULATION
 #include "config.h"
@@ -20,7 +20,8 @@
 #include <ros/ros.h>
 #endif
 
-#include <math/AP_Math.h>
+#include <radxa/control/math/AP_Math.h>
+#include <cmath>
 #include <vector>
 
 #ifndef SIMULATION
@@ -38,7 +39,7 @@
 #include "servo/servo.h"
 #endif
 
-#include "state_estimate/state_estimate.h"
+#include <radxa/control/state_estimate.h>
 
 #include <std_msgs/UInt8.h>
 #include <std_msgs/Float32.h>
@@ -75,16 +76,16 @@ enum AXIS {
   Z = 2,
 };
 
-class AttitudeController
+class RadxaAttitudeController
 {
 public:
-  AttitudeController();
-  ~AttitudeController(){}
+  RadxaAttitudeController();
+  ~RadxaAttitudeController(){}
 
 #ifdef SIMULATION
-  void init(ros::NodeHandle* nh, StateEstimate* estimator);
+  void init(ros::NodeHandle* nh, RadxaStateEstimate* estimator);
 #else
-  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator,
+  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, RadxaStateEstimate* estimator,
             DShot* dshot, DirectServo* servo, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL);
 #endif
 
@@ -94,7 +95,7 @@ public:
   void setStartControlFlag(bool start_control_flag);
   void setUavModel(int8_t uav_model);
   inline uint16_t getMotorNumber(){return motor_number_;}
-  inline const ap::Matrix3f getOffsetRotation()  { return offset_rot_; }
+  inline const radxa_ap::Matrix3f getOffsetRotation()  { return offset_rot_; }
 
   void setMotorNumber(uint16_t motor_number);
   void setGimbalDof(uint8_t gimbal_dof){gimbal_dof_ = gimbal_dof; }
@@ -108,6 +109,17 @@ public:
   void setForceLandingFlag(bool force_landing_flag) { force_landing_flag_ = force_landing_flag; }
   float getPwm(uint8_t index) {return target_pwm_[index];}
   float getForce(uint8_t index) {return target_thrust_[index];}
+
+#ifdef SIMULATION
+  // The native ROS build is also used by the Radxa hardware backend. Feed its
+  // measured battery voltage directly instead of the Gazebo set_sim_voltage
+  // topic so thrust-to-PWM compensation matches the MCU implementation.
+  void setMeasuredVoltage(float voltage)
+  {
+    if (std::isfinite(voltage) && voltage > 0) sim_voltage_ = voltage;
+  }
+
+#endif
 
   bool activated();
 
@@ -139,19 +151,24 @@ private:
   ros::Publisher gimbal_control_pub_;
   ros::ServiceServer att_control_srv_;
 
-  bool setAttitudeControlCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) { att_control_flag_ = req.data; return true;}
+  bool setAttitudeControlCallback(std_srvs::SetBool::Request& req,
+                                  std_srvs::SetBool::Response& /*res*/)
+  {
+    att_control_flag_ = req.data;
+    return true;
+  }
   void setSimVolCallback(const std_msgs::Float32 vol_msg) { sim_voltage_ = vol_msg.data; }
   float sim_voltage_;
 
 #else
-  ros::Subscriber<spinal::FourAxisCommand, AttitudeController> four_axis_cmd_sub_;
-  ros::Subscriber<spinal::PwmInfo, AttitudeController> pwm_info_sub_;
-  ros::Subscriber<spinal::RollPitchYawTerms, AttitudeController> rpy_gain_sub_;
-  ros::Subscriber<spinal::PwmTest, AttitudeController> pwm_test_sub_;
-  ros::Subscriber<spinal::PMatrixPseudoInverseWithInertia, AttitudeController> p_matrix_pseudo_inverse_inertia_sub_;
-  ros::Subscriber<spinal::TorqueAllocationMatrixInv, AttitudeController> torque_allocation_matrix_inv_sub_;
-  ros::Subscriber<spinal::DesireCoord, AttitudeController> offset_rot_sub_;
-  ros::ServiceServer<std_srvs::SetBool::Request, std_srvs::SetBool::Response, AttitudeController> att_control_srv_;
+  ros::Subscriber<spinal::FourAxisCommand, RadxaAttitudeController> four_axis_cmd_sub_;
+  ros::Subscriber<spinal::PwmInfo, RadxaAttitudeController> pwm_info_sub_;
+  ros::Subscriber<spinal::RollPitchYawTerms, RadxaAttitudeController> rpy_gain_sub_;
+  ros::Subscriber<spinal::PwmTest, RadxaAttitudeController> pwm_test_sub_;
+  ros::Subscriber<spinal::PMatrixPseudoInverseWithInertia, RadxaAttitudeController> p_matrix_pseudo_inverse_inertia_sub_;
+  ros::Subscriber<spinal::TorqueAllocationMatrixInv, RadxaAttitudeController> torque_allocation_matrix_inv_sub_;
+  ros::Subscriber<spinal::DesireCoord, RadxaAttitudeController> offset_rot_sub_;
+  ros::ServiceServer<std_srvs::SetBool::Request, std_srvs::SetBool::Response, RadxaAttitudeController> att_control_srv_;
 
   ros::Publisher esc_telem_pub_;
   spinal::ESCTelemetryArray esc_telem_msg_;
@@ -167,7 +184,7 @@ private:
   DirectServo* servo_;
 #endif
 
-  StateEstimate* estimator_;
+  RadxaStateEstimate* estimator_;
 
   int8_t uav_model_;
   uint16_t motor_number_;
@@ -198,11 +215,11 @@ private:
   int max_yaw_term_index_;
 
   // Offset Rotation from the control frame to the estimation frame
-  ap::Matrix3f offset_rot_;
+  radxa_ap::Matrix3f offset_rot_;
 
   // Gyro Moment Compensation
   float p_matrix_pseudo_inverse_[MAX_MOTOR_NUMBER][4];
-  ap::Matrix3f inertia_;
+  radxa_ap::Matrix3f inertia_;
 
   // Failsafe
   bool failsafe_;
@@ -250,7 +267,13 @@ private:
   }
 
 #ifdef SIMULATION
-  uint32_t HAL_GetTick(){ return ros::Time::now().toSec() * 1000; }
+  uint32_t HAL_GetTick()
+  {
+    // Convert as integer first. Wall-clock epoch milliseconds exceed uint32;
+    // unsigned narrowing then gives the same defined wraparound as the MCU
+    // tick counter, while double-to-uint32 overflow is undefined.
+    return static_cast<uint32_t>(ros::Time::now().toNSec() / 1000000ULL);
+  }
 public:
   float DELTA_T;
   double prev_time_;

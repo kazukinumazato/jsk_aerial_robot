@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   aerial_robot_estimation
   aerial_robot_model
   aerial_robot_msgs
+  angles
   dynamic_reconfigure
   pluginlib
   roscpp
@@ -39,7 +40,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES control_utils flight_control_pluginlib flight_navigation trajectory_generation
-  CATKIN_DEPENDS aerial_robot_estimation aerial_robot_model aerial_robot_msgs dynamic_reconfigure pluginlib roscpp spinal tf
+  CATKIN_DEPENDS aerial_robot_estimation aerial_robot_model aerial_robot_msgs angles dynamic_reconfigure pluginlib roscpp spinal tf
 )
 
 include_directories(

@@ -9,12 +9,12 @@
 #error "Please define __cplusplus, because this is a c++ based file "
 #endif
 
-#ifndef __ATTITUDE_ESTIMATE_H
-#define __ATTITUDE_ESTIMATE_H
+#ifndef __RADXA_ATTITUDE_ESTIMATE_H
+#define __RADXA_ATTITUDE_ESTIMATE_H
 
 #ifndef SIMULATION
 #include "config.h"
-#include <math/AP_Math.h>
+#include <radxa/control/math/AP_Math.h>
 
 /* ros */
 #include <ros.h>
@@ -27,9 +27,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 
 /* sensors */
-#ifdef SIMULATION
-#include <tf/LinearMath/Matrix3x3.h>
-#else
+#ifndef SIMULATION
 #include "sensors/imu/drivers/mpu9250/imu_mpu9250.h"
 #include "sensors/imu/drivers/icm20948/icm_20948.h"
 #include "sensors/gps/gps_ublox.h"
@@ -37,7 +35,7 @@
 
 
 /* estiamtor algorithm */
-#include "state_estimate/attitude/complementary_ahrs.h"
+#include <radxa/control/complementary_ahrs.h>
 //#include "state_estimate/attitude/madgwick_ahrs.h"
 
 #include <vector>
@@ -49,12 +47,12 @@
 /* please change the algorithm type according to your application */
 #define ESTIMATE_TYPE COMPLEMENTARY
 
-class AttitudeEstimate
+class RadxaAttitudeEstimate
 {
 public:
-  ~AttitudeEstimate(){}
+  ~RadxaAttitudeEstimate(){}
 #ifdef SIMULATION
-  AttitudeEstimate(): acc_(0,0,9.8), mag_(1,0,0){}
+  RadxaAttitudeEstimate(): acc_(0,0,9.8), mag_(1,0,0){}
 
   void init(ros::NodeHandle* nh)
   {
@@ -66,7 +64,7 @@ public:
     use_ground_truth_ = false;
 
 #if ESTIMATE_TYPE == COMPLEMENTARY
-    estimator_ = new ComplementaryAHRS();
+    estimator_ = new RadxaComplementaryAHRS();
 #elif ESTIMATE_TYPE == MADWICK
     estimator_ = new MadgwickAHRS();
 #else
@@ -89,9 +87,9 @@ public:
   void setAcc(float x, float y, float z) { acc_.x = x; acc_.y = y; acc_.z = z; }
 
 #else
-  AttitudeEstimate():
+  RadxaAttitudeEstimate():
     imu_pub_("imu", &imu_msg_),
-    mag_declination_srv_("mag_declination", &AttitudeEstimate::magDeclinationCallback,this)
+    mag_declination_srv_("mag_declination", &RadxaAttitudeEstimate::magDeclinationCallback,this)
   {}
 
   void init(IMU* imu, GPS* gps, ros::NodeHandle* nh)
@@ -108,7 +106,7 @@ public:
     use_ground_truth_ = false;
 
 #if ESTIMATE_TYPE == COMPLEMENTARY
-    estimator_ = new ComplementaryAHRS();
+    estimator_ = new RadxaComplementaryAHRS();
 #elif ESTIMATE_TYPE == MADWICK
     estimator_ = new MadgwickAHRS();
 #else
@@ -163,7 +161,7 @@ public:
           }
 
         // quaternion
-        ap::Quaternion q = estimator_->getQuaternion();
+        radxa_ap::Quaternion q = estimator_->getQuaternion();
         imu_msg_.quaternion[0] = q[1]; // x
         imu_msg_.quaternion[1] = q[2]; // y
         imu_msg_.quaternion[2] = q[3]; // z
@@ -178,22 +176,22 @@ public:
       }
   }
 
-  EstimatorAlgorithm* getEstimator() {return estimator_;}
+  RadxaEstimatorAlgorithm* getEstimator() {return estimator_;}
 
-  const ap::Matrix3f getRotation()
+  const radxa_ap::Matrix3f getRotation()
   {
     if (!use_ground_truth_) return estimator_->getRotation();
     else return ground_truth_rot_;
   }
 
-  const ap::Vector3f getAngular()
+  const radxa_ap::Vector3f getAngular()
   {
     if (!use_ground_truth_) return estimator_->getAngular();
     else return ground_truth_ang_vel_;
   }
 
   inline void useGroundTruth(bool flag) { use_ground_truth_ = flag; } // for simulation
-  void setGroundTruthStates(ap::Matrix3f rot, ap::Vector3f ang_vel)
+  void setGroundTruthStates(radxa_ap::Matrix3f rot, radxa_ap::Vector3f ang_vel)
   {
     ground_truth_rot_ = rot;
     ground_truth_ang_vel_ = ang_vel;
@@ -206,13 +204,13 @@ private:
   ros::Publisher imu_pub_;
   spinal::Imu imu_msg_;
 
-  EstimatorAlgorithm* estimator_;
+  RadxaEstimatorAlgorithm* estimator_;
 #ifndef SIMULATION
   IMU* imu_;
   GPS* gps_;
 
   /* mag declination */
-  ros::ServiceServer<spinal::MagDeclination::Request, spinal::MagDeclination::Response, AttitudeEstimate> mag_declination_srv_;
+  ros::ServiceServer<spinal::MagDeclination::Request, spinal::MagDeclination::Response, RadxaAttitudeEstimate> mag_declination_srv_;
 
   void magDeclinationCallback(const spinal::MagDeclination::Request& req, spinal::MagDeclination::Response& res)
   {
@@ -239,15 +237,19 @@ private:
   }
 
 #else
-  ap::Vector3f acc_, mag_, gyro_;
-  uint32_t HAL_GetTick(){ return ros::Time::now().toSec() * 1000; }
+  radxa_ap::Vector3f acc_, mag_, gyro_;
+  uint32_t HAL_GetTick()
+  {
+    return static_cast<uint32_t>(ros::Time::now().toNSec() / 1000000ULL);
+  }
 #endif
 
   uint32_t last_imu_pub_time_, last_attitude_pub_time_;
 
   bool use_ground_truth_; // for simulation
-  ap::Matrix3f ground_truth_rot_;
-  ap::Vector3f ground_truth_ang_vel_;
+  radxa_ap::Matrix3f ground_truth_rot_;
+  radxa_ap::Vector3f ground_truth_ang_vel_;
 
 };
 #endif
+

@@ -2,14 +2,19 @@
 <package format="2">
   <name>radxa</name>
   <version>0.1.0</version>
-  <description>Cubie A7Z hardware backend for the aerial_robot spinal controller.</description>
+  <description>Native Cubie A7Z flight controller and hardware backend for aerial_robot.</description>
 
   <maintainer email="jsk@jsk.imi.i.u-tokyo.ac.jp">JSK Aerial Robotics</maintainer>
   <license>BSD-3-Clause</license>
 
   <buildtool_depend>catkin</buildtool_depend>
+  <depend>geometry_msgs</depend>
   <depend>roscpp</depend>
+  <depend>roslib</depend>
   <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+  <!-- Message compatibility only; Radxa does not link or include Spinal's
+       controller or firmware implementation. -->
   <depend>spinal</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>

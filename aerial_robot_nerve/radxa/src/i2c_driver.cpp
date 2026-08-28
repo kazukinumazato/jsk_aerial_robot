@@ -48,7 +48,7 @@ namespace radxa
       return false;
     }
 
-    // A second radxa_spinal_node would otherwise race register-bank changes on
+    // A second Radxa flight-controller node would otherwise race register-bank changes on
     // the ICM-20948 and write conflicting values to the same PWM sysfs files.
     // Lock the shared I2C bus before any other board output is initialized.
     if (::flock(impl_->fd, LOCK_EX | LOCK_NB) < 0) {

@@ -1,0 +1,24 @@
+<launch>
+  <arg name="config" default="$(find radxa)/config/cubie_a7z.yaml"/>
+  <arg name="namespace" default=""/>
+  <arg name="imu_zero_on_startup" default="true"/>
+  <arg name="imu_zero_duration_sec" default="3.0"/>
+
+  <group if="$(eval arg('namespace') == '')">
+    <node pkg="radxa" type="radxa_flight_controller_node"
+          name="radxa_flight_controller" output="screen" required="true">
+      <rosparam command="load" file="$(arg config)"/>
+      <param name="imu_zero_on_startup" value="$(arg imu_zero_on_startup)"/>
+      <param name="imu_zero_duration_sec" value="$(arg imu_zero_duration_sec)"/>
+    </node>
+  </group>
+
+  <group ns="$(arg namespace)" unless="$(eval arg('namespace') == '')">
+    <node pkg="radxa" type="radxa_flight_controller_node"
+          name="radxa_flight_controller" output="screen" required="true">
+      <rosparam command="load" file="$(arg config)"/>
+      <param name="imu_zero_on_startup" value="$(arg imu_zero_on_startup)"/>
+      <param name="imu_zero_duration_sec" value="$(arg imu_zero_duration_sec)"/>
+    </node>
+  </group>
+</launch>

@@ -4,8 +4,11 @@ project(radxa)
 add_compile_options(-std=c++17 -Wall -Wextra -Wpedantic)
 
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
   roscpp
+  roslib
   rospy
+  sensor_msgs
   spinal
   std_msgs
   std_srvs
@@ -15,8 +18,8 @@ pkg_check_modules(PERIPHERY REQUIRED libperiphery)
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES radxa_hw
-  CATKIN_DEPENDS roscpp rospy spinal std_msgs std_srvs
+  LIBRARIES radxa_control radxa_hw
+  CATKIN_DEPENDS geometry_msgs roscpp roslib rospy sensor_msgs spinal std_msgs std_srvs
   DEPENDS PERIPHERY
 )
 
@@ -35,16 +38,34 @@ add_library(radxa_hw
   src/pwm_driver.cpp
   src/radxa_board_io.cpp
 )
-target_link_libraries(radxa_hw ${PERIPHERY_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(radxa_hw
+  ${PERIPHERY_LIBRARIES}
+  ${roscpp_LIBRARIES}
+)
 add_dependencies(radxa_hw ${catkin_EXPORTED_TARGETS})
 
-add_executable(radxa_spinal_node src/radxa_spinal_node.cpp)
-target_compile_definitions(radxa_spinal_node PRIVATE SIMULATION)
-target_link_libraries(radxa_spinal_node
-  radxa_hw
-  ${catkin_LIBRARIES}
+add_library(radxa_control
+  src/control/attitude_controller.cpp
+  src/control/math/AP_Math.cpp
+  src/control/math/location.cpp
+  src/control/math/matrix3.cpp
+  src/control/math/quaternion.cpp
+  src/control/math/vector2.cpp
+  src/control/math/vector3.cpp
 )
-add_dependencies(radxa_spinal_node ${catkin_EXPORTED_TARGETS})
+target_compile_definitions(radxa_control PRIVATE SIMULATION)
+target_link_libraries(radxa_control ${roscpp_LIBRARIES})
+add_dependencies(radxa_control ${catkin_EXPORTED_TARGETS})
+
+add_executable(radxa_flight_controller_node
+  src/radxa_flight_controller_node.cpp)
+target_compile_definitions(radxa_flight_controller_node PRIVATE SIMULATION)
+target_link_libraries(radxa_flight_controller_node
+  radxa_control
+  radxa_hw
+  ${roscpp_LIBRARIES}
+)
+add_dependencies(radxa_flight_controller_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(imu_test src/imu_test.cpp)
 target_link_libraries(imu_test radxa_hw ${catkin_LIBRARIES})
@@ -74,9 +95,16 @@ if(CATKIN_ENABLE_TESTING)
   if(TARGET radxa_driver_test)
     target_link_libraries(radxa_driver_test radxa_hw ${catkin_LIBRARIES})
   endif()
+
+  catkin_add_gtest(radxa_control_test test/control_test.cpp)
+  if(TARGET radxa_control_test)
+    target_compile_definitions(radxa_control_test PRIVATE SIMULATION)
+    target_link_libraries(radxa_control_test radxa_control ${roscpp_LIBRARIES})
+  endif()
 endif()
 
-install(TARGETS radxa_hw radxa_spinal_node imu_test adc_test dshot_test
+install(TARGETS radxa_control radxa_hw radxa_flight_controller_node
+  imu_test adc_test dshot_test
   dshot_beacon_test dshot_arm_test pwm_test
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

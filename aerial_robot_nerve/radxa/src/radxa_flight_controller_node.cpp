@@ -18,8 +18,8 @@
 #include <spinal/ServoStates.h>
 #include <spinal/ServoTorqueCmd.h>
 
-#include <flight_control/flight_control.h>
-#include <state_estimate/state_estimate.h>
+#include <radxa/control/flight_controller.h>
+#include <radxa/control/state_estimate.h>
 
 #include <radxa/radxa_board_io.h>
 
@@ -33,13 +33,13 @@ public:
   {
     fd_ = ::open(path, O_CREAT | O_RDWR | O_CLOEXEC, 0660);
     if (fd_ < 0) {
-      std::cerr << "failed to open radxa_spinal lock " << path << ": "
+      std::cerr << "failed to open Radxa flight-controller lock " << path << ": "
                 << std::strerror(errno) << std::endl;
       return false;
     }
     if (::flock(fd_, LOCK_EX | LOCK_NB) < 0) {
       const int error = errno;
-      std::cerr << "another radxa_spinal_node is already running: "
+      std::cerr << "another radxa_flight_controller_node is already running: "
                 << std::strerror(error) << " (errno " << error << ")"
                 << std::endl;
       ::close(fd_);
@@ -132,10 +132,10 @@ radxa::RadxaBoardConfig loadBoardConfig(ros::NodeHandle& pnh)
   return config;
 }
 
-class RadxaSpinalNode
+class RadxaFlightControllerNode
 {
 public:
-  RadxaSpinalNode()
+  RadxaFlightControllerNode()
     : nh_(), pnh_("~"), board_(loadBoardConfig(pnh_))
   {
   }
@@ -189,19 +189,19 @@ public:
 
     battery_pub_ = nh_.advertise<std_msgs::Float32>("battery_voltage_status", 1);
     adc_scale_sub_ = nh_.subscribe("set_adc_scale", 1,
-                                   &RadxaSpinalNode::adcScaleCallback, this);
+                                   &RadxaFlightControllerNode::adcScaleCallback, this);
     pwm_test_sub_ = nh_.subscribe("pwm_test", 1,
-                                  &RadxaSpinalNode::pwmTestCallback, this);
+                                  &RadxaFlightControllerNode::pwmTestCallback, this);
     servo_control_sub_ = nh_.subscribe("extra_servo_cmd", 1,
-        &RadxaSpinalNode::servoControlCallback, this);
+        &RadxaFlightControllerNode::servoControlCallback, this);
     servo_torque_sub_ = nh_.subscribe("extra_servo_torque_enable", 1,
-        &RadxaSpinalNode::servoTorqueCallback, this);
+        &RadxaFlightControllerNode::servoTorqueCallback, this);
     servo_state_pub_ = nh_.advertise<spinal::ServoStates>("servo/states", 1);
 
     last_imu_success_ = ros::SteadyTime::now();
     next_voltage_read_ = ros::SteadyTime::now();
     next_servo_state_publish_ = ros::SteadyTime::now();
-    ROS_INFO_STREAM("radxa spinal node ready: " << board_.dshotChannelCount()
+    ROS_INFO_STREAM("Radxa flight controller ready: " << board_.dshotChannelCount()
                     << "/4 DShot channels configured");
     return true;
   }
@@ -398,8 +398,8 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
   radxa::RadxaBoardIo board_;
-  StateEstimate estimator_;
-  FlightControl controller_;
+  RadxaStateEstimate estimator_;
+  RadxaFlightController controller_;
 
   ros::Publisher battery_pub_;
   ros::Publisher servo_state_pub_;
@@ -435,11 +435,11 @@ int main(int argc, char** argv)
   // Acquire this before ros::init. A duplicate ROS node name can otherwise
   // cause the master to stop the healthy instance before hardware init fails.
   ProcessLock process_lock;
-  if (!process_lock.acquire("/tmp/radxa_spinal_node.lock")) {
+  if (!process_lock.acquire("/tmp/radxa_flight_controller_node.lock")) {
     return 1;
   }
-  ros::init(argc, argv, "radxa_spinal");
-  RadxaSpinalNode node;
+  ros::init(argc, argv, "radxa_flight_controller");
+  RadxaFlightControllerNode node;
   if (!node.init()) {
     return 1;
   }

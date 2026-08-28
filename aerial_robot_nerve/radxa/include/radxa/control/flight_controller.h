@@ -9,8 +9,8 @@
 #error "Please define __cplusplus, because this is a c++ based file "
 #endif
 
-#ifndef __FLIGHT_CONTROL_H
-#define __FLIGHT_CONTROL_H
+#ifndef __RADXA_FLIGHT_CONTROLLER_H
+#define __RADXA_FLIGHT_CONTROLLER_H
 
 #ifndef SIMULATION
 #include "config.h"
@@ -21,56 +21,59 @@
 
 #ifndef SIMULATION
 /* state estimate  */
-#include "state_estimate/state_estimate.h"
+#include <radxa/control/state_estimate.h>
 
 /* battery status */
 #include "battery_status/battery_status.h"
 #endif
 
 /* controller  */
-#include "flight_control/attitude/attitude_control.h"
+#include <radxa/control/attitude_controller.h>
 
 /* ros */
 #include <spinal/FlightConfigCmd.h>
 #include <spinal/UavInfo.h>
 #include <std_msgs/UInt8.h>
 
-class FlightControl
+class RadxaFlightController
 {
 public:
-  ~FlightControl(){}
+  ~RadxaFlightController(){}
 
 #ifdef SIMULATION
-  FlightControl(): att_controller_() {}
+  RadxaFlightController(): att_controller_() {}
 
-  void init(ros::NodeHandle* nh, StateEstimate* estimator)
+  void init(ros::NodeHandle* nh, RadxaStateEstimate* estimator)
   {
     nh_ = nh;
     config_ack_pub_ = nh_->advertise<std_msgs::UInt8>("flight_config_ack", 1);
-    uav_info_sub_ = nh_->subscribe("uav_info", 1, &FlightControl::uavInfoConfigCallback, this);
-    flight_config_sub_ = nh_->subscribe("flight_config_cmd", 1, &FlightControl::flightConfigCallback, this);
-    gimbal_dof_sub_ = nh_->subscribe("gimbal_dof", 1, &FlightControl::gimbalDofCallback, this);
+    uav_info_sub_ = nh_->subscribe("uav_info", 1, &RadxaFlightController::uavInfoConfigCallback, this);
+    flight_config_sub_ = nh_->subscribe("flight_config_cmd", 1, &RadxaFlightController::flightConfigCallback, this);
+    gimbal_dof_sub_ = nh_->subscribe("gimbal_dof", 1, &RadxaFlightController::gimbalDofCallback, this);
 
     att_controller_.init(nh, estimator);
 
     start_control_flag_ = false;
     pwm_test_flag_ = false;
     integrate_flag_ = false;
+    force_landing_flag_ = false;
+    gimbal_set_flag_ = false;
   }
 
-  inline AttitudeController& getAttController(){ return att_controller_;}
+  inline RadxaAttitudeController& getAttController(){ return att_controller_;}
+  inline bool isArmed() const { return start_control_flag_; }
 
 #else
-  FlightControl():
+  RadxaFlightController():
     config_ack_pub_("flight_config_ack", &config_ack_msg_),
-    uav_info_sub_("uav_info", &FlightControl::uavInfoConfigCallback, this ),
-    flight_config_sub_("flight_config_cmd", &FlightControl::flightConfigCallback, this ),
-    gimbal_dof_sub_("gimbal_dof", &FlightControl::gimbalDofCallback, this ),
+    uav_info_sub_("uav_info", &RadxaFlightController::uavInfoConfigCallback, this ),
+    flight_config_sub_("flight_config_cmd", &RadxaFlightController::flightConfigCallback, this ),
+    gimbal_dof_sub_("gimbal_dof", &RadxaFlightController::gimbalDofCallback, this ),
     att_controller_()
   {
   }
 
-  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator, DShot* dshot, DirectServo* servo, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL)
+  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, RadxaStateEstimate* estimator, DShot* dshot, DirectServo* servo, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL)
   {
     nh_ = nh;
 
@@ -98,8 +101,10 @@ public:
     start_control_flag_ = false;
     pwm_test_flag_ = false;
     integrate_flag_ = false;
+    force_landing_flag_ = false;
+    gimbal_set_flag_ = false;
   }
-  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL)
+  void init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, RadxaStateEstimate* estimator, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex = NULL)
   {
     init(htim1, htim2, estimator, NULL, NULL, bat, nh, mutex);
   }
@@ -147,9 +152,9 @@ private:
   ros::Subscriber flight_config_sub_;
   ros::Subscriber gimbal_dof_sub_;
 #else
-  ros::Subscriber<spinal::UavInfo, FlightControl> uav_info_sub_;
-  ros::Subscriber<spinal::FlightConfigCmd, FlightControl> flight_config_sub_;
-  ros::Subscriber<std_msgs::UInt8, FlightControl> gimbal_dof_sub_;
+  ros::Subscriber<spinal::UavInfo, RadxaFlightController> uav_info_sub_;
+  ros::Subscriber<spinal::FlightConfigCmd, RadxaFlightController> flight_config_sub_;
+  ros::Subscriber<std_msgs::UInt8, RadxaFlightController> gimbal_dof_sub_;
 #endif
 
   bool start_control_flag_;
@@ -158,9 +163,9 @@ private:
   bool force_landing_flag_;
   bool gimbal_set_flag_;
 
-  AttitudeController att_controller_;
+  RadxaAttitudeController att_controller_;
 #ifndef SIMULATION
-  StateEstimate* estimator_;
+  RadxaStateEstimate* estimator_;
   BatteryStatus* bat_;
   TIM_HandleTypeDef* pwm_htim1_;
   TIM_HandleTypeDef*  pwm_htim2_;
@@ -253,3 +258,4 @@ void gimbalDofCallback(const std_msgs::UInt8& gimbal_msg)
 };
 
 #endif
+

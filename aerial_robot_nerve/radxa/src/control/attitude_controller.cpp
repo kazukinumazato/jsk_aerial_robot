@@ -9,15 +9,15 @@
 #error "Please define __cplusplus, because this is a c++ based file "
 #endif
 
-#include "flight_control/attitude/attitude_control.h"
+#include <radxa/control/attitude_controller.h>
 
 #ifdef SIMULATION
 #include <sensor_msgs/JointState.h>
-AttitudeController::AttitudeController(): DELTA_T(0), prev_time_(-1), sim_voltage_(0)
+RadxaAttitudeController::RadxaAttitudeController(): sim_voltage_(0), DELTA_T(0), prev_time_(-1)
 {
 }
 
-void AttitudeController::init(ros::NodeHandle* nh, StateEstimate* estimator)
+void RadxaAttitudeController::init(ros::NodeHandle* nh, RadxaStateEstimate* estimator)
 {
   nh_ = nh;
   estimator_ = estimator;
@@ -26,38 +26,38 @@ void AttitudeController::init(ros::NodeHandle* nh, StateEstimate* estimator)
   control_term_pub_ = nh_->advertise<spinal::RollPitchYawTerms>("rpy/pid", 1);
   control_feedback_state_pub_ = nh_->advertise<spinal::RollPitchYawTerm>("rpy/feedback_state", 1);
   anti_gyro_pub_ = nh_->advertise<std_msgs::Float32MultiArray>("gyro_moment_compensation", 1);
-  four_axis_cmd_sub_ = nh_->subscribe("four_axes/command", 1, &AttitudeController::fourAxisCommandCallback, this);
-  pwm_info_sub_ = nh_->subscribe("motor_info", 1, &AttitudeController::pwmInfoCallback, this);
-  rpy_gain_sub_ = nh_->subscribe("rpy/gain", 1, &AttitudeController::rpyGainCallback, this);
-  p_matrix_pseudo_inverse_inertia_sub_ = nh_->subscribe("p_matrix_pseudo_inverse_inertia", 1, &AttitudeController::pMatrixInertiaCallback, this);
-  pwm_test_sub_ = nh_->subscribe("pwm_test", 1, &AttitudeController::pwmTestCallback, this);
-  att_control_srv_ = nh_->advertiseService("set_attitude_control", &AttitudeController::setAttitudeControlCallback, this);
-  torque_allocation_matrix_inv_sub_ = nh_->subscribe("torque_allocation_matrix_inv", 1, &AttitudeController::torqueAllocationMatrixInvCallback, this);
-  sim_vol_sub_ = nh_->subscribe("set_sim_voltage", 1, &AttitudeController::setSimVolCallback, this);
-  offset_rot_sub_ = nh_->subscribe("desire_coordinate", 1, &AttitudeController::offsetRotCallback, this);
+  four_axis_cmd_sub_ = nh_->subscribe("four_axes/command", 1, &RadxaAttitudeController::fourAxisCommandCallback, this);
+  pwm_info_sub_ = nh_->subscribe("motor_info", 1, &RadxaAttitudeController::pwmInfoCallback, this);
+  rpy_gain_sub_ = nh_->subscribe("rpy/gain", 1, &RadxaAttitudeController::rpyGainCallback, this);
+  p_matrix_pseudo_inverse_inertia_sub_ = nh_->subscribe("p_matrix_pseudo_inverse_inertia", 1, &RadxaAttitudeController::pMatrixInertiaCallback, this);
+  pwm_test_sub_ = nh_->subscribe("pwm_test", 1, &RadxaAttitudeController::pwmTestCallback, this);
+  att_control_srv_ = nh_->advertiseService("set_attitude_control", &RadxaAttitudeController::setAttitudeControlCallback, this);
+  torque_allocation_matrix_inv_sub_ = nh_->subscribe("torque_allocation_matrix_inv", 1, &RadxaAttitudeController::torqueAllocationMatrixInvCallback, this);
+  sim_vol_sub_ = nh_->subscribe("set_sim_voltage", 1, &RadxaAttitudeController::setSimVolCallback, this);
+  offset_rot_sub_ = nh_->subscribe("desire_coordinate", 1, &RadxaAttitudeController::offsetRotCallback, this);
   baseInit();
   gimbal_control_pub_ = nh_->advertise<sensor_msgs::JointState>("gimbals_ctrl", 1);
 }
 
 #else
 
-AttitudeController::AttitudeController():
+RadxaAttitudeController::RadxaAttitudeController():
   pwms_pub_("motor_pwms", &pwms_msg_),
   control_term_pub_("rpy/pid", &control_term_msg_),
   control_feedback_state_pub_("rpy/feedback_state", &control_feedback_state_msg_),
-  four_axis_cmd_sub_("four_axes/command", &AttitudeController::fourAxisCommandCallback, this ),
-  pwm_info_sub_("motor_info", &AttitudeController::pwmInfoCallback, this),
-  rpy_gain_sub_("rpy/gain", &AttitudeController::rpyGainCallback, this),
-  pwm_test_sub_("pwm_test", &AttitudeController::pwmTestCallback, this ),
-  p_matrix_pseudo_inverse_inertia_sub_("p_matrix_pseudo_inverse_inertia", &AttitudeController::pMatrixInertiaCallback, this),
-  torque_allocation_matrix_inv_sub_("torque_allocation_matrix_inv", &AttitudeController::torqueAllocationMatrixInvCallback, this),
-  offset_rot_sub_("desire_coordinate", &AttitudeController::offsetRotCallback, this ),
-  att_control_srv_("set_attitude_control", &AttitudeController::setAttitudeControlCallback, this),
+  four_axis_cmd_sub_("four_axes/command", &RadxaAttitudeController::fourAxisCommandCallback, this ),
+  pwm_info_sub_("motor_info", &RadxaAttitudeController::pwmInfoCallback, this),
+  rpy_gain_sub_("rpy/gain", &RadxaAttitudeController::rpyGainCallback, this),
+  pwm_test_sub_("pwm_test", &RadxaAttitudeController::pwmTestCallback, this ),
+  p_matrix_pseudo_inverse_inertia_sub_("p_matrix_pseudo_inverse_inertia", &RadxaAttitudeController::pMatrixInertiaCallback, this),
+  torque_allocation_matrix_inv_sub_("torque_allocation_matrix_inv", &RadxaAttitudeController::torqueAllocationMatrixInvCallback, this),
+  offset_rot_sub_("desire_coordinate", &RadxaAttitudeController::offsetRotCallback, this ),
+  att_control_srv_("set_attitude_control", &RadxaAttitudeController::setAttitudeControlCallback, this),
   esc_telem_pub_("esc_telem", &esc_telem_msg_)
 {
 }
 
-void AttitudeController::init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, StateEstimate* estimator,
+void RadxaAttitudeController::init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2, RadxaStateEstimate* estimator,
                               DShot* dshot, DirectServo* servo, BatteryStatus* bat, ros::NodeHandle* nh, osMutexId* mutex)
 {
 
@@ -129,7 +129,7 @@ void AttitudeController::init(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2
 }
 #endif
 
-void AttitudeController::baseInit()
+void RadxaAttitudeController::baseInit()
 {
  // base param for uav model
   motor_number_ = 0;
@@ -160,11 +160,12 @@ void AttitudeController::baseInit()
 
   // frame
   offset_rot_.identity();
+  inertia_.identity();
 
   reset();
 }
 
-void AttitudeController::pwmsControl(void)
+void RadxaAttitudeController::pwmsControl(void)
 {
   /* target thrust -> target pwm */
   pwmConversion();
@@ -301,7 +302,7 @@ void AttitudeController::pwmsControl(void)
 #endif
 }
 
-void AttitudeController::update(void)
+void RadxaAttitudeController::update(void)
 {
 #ifndef SIMULATION
   /* mutex to wait for the completion of update of ros callback function */
@@ -334,11 +335,11 @@ void AttitudeController::update(void)
       prev_time_ = ros::Time::now().toSec();
 #endif
 
-      ap::Matrix3f base_rot = estimator_->getAttEstimator()->getRotation();
-      ap::Vector3f base_vel = estimator_->getAttEstimator()->getAngular();
-      ap::Matrix3f rot = base_rot * offset_rot_.transposed();
-      ap::Vector3f vel = offset_rot_ * base_vel;
-      ap::Vector3f angles; // euler angles
+      radxa_ap::Matrix3f base_rot = estimator_->getAttEstimator()->getRotation();
+      radxa_ap::Vector3f base_vel = estimator_->getAttEstimator()->getAngular();
+      radxa_ap::Matrix3f rot = base_rot * offset_rot_.transposed();
+      radxa_ap::Vector3f vel = offset_rot_ * base_vel;
+      radxa_ap::Vector3f angles; // euler angles
       rot.to_euler(&angles.x, &angles.y, &angles.z);
 
       /* failsafe 3: too large tile angle */
@@ -368,7 +369,7 @@ void AttitudeController::update(void)
       // linear control method
       {
         /* gyro moment */
-        ap::Vector3f gyro_moment = vel % (inertia_ * vel);
+        radxa_ap::Vector3f gyro_moment = vel % (inertia_ * vel);
 #ifdef SIMULATION
         std_msgs::Float32MultiArray anti_gyro_msg;
 #endif
@@ -466,7 +467,7 @@ void AttitudeController::update(void)
 }
 
 
-void AttitudeController::reset(void)
+void RadxaAttitudeController::reset(void)
 {
   for(int i = 0; i < MAX_MOTOR_NUMBER; i++)
     {
@@ -485,7 +486,9 @@ void AttitudeController::reset(void)
           thrust_i_gain_[i][j] = 0;
           thrust_d_gain_[i][j] = 0;
           torque_allocation_matrix_inv_[i][j] = 0.0;
+          p_matrix_pseudo_inverse_[i][j] = 0.0;
         }
+      p_matrix_pseudo_inverse_[i][3] = 0.0;
     }
 
   for(int i = 0; i < 3; i++)
@@ -510,7 +513,7 @@ void AttitudeController::reset(void)
 #endif
 }
 
-void AttitudeController::fourAxisCommandCallback( const spinal::FourAxisCommand &cmd_msg)
+void RadxaAttitudeController::fourAxisCommandCallback( const spinal::FourAxisCommand &cmd_msg)
 {
   if(!start_control_flag_) return; //do not receive command
 
@@ -579,7 +582,7 @@ void AttitudeController::fourAxisCommandCallback( const spinal::FourAxisCommand 
 #endif
 }
 
-void AttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
+void RadxaAttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
 {
 #ifndef SIMULATION
   /* mutex to protect the completion of following update  */
@@ -597,7 +600,7 @@ void AttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
   motor_info_.resize(0);
 
 #ifdef SIMULATION
-  for(int i = 0; i < info_msg.motor_info.size(); i++)
+  for(std::size_t i = 0; i < info_msg.motor_info.size(); i++)
 #else
     for(int i = 0; i < info_msg.motor_info_length; i++)
 #endif
@@ -606,7 +609,8 @@ void AttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
       }
 
 #ifdef SIMULATION
-  if(sim_voltage_== 0) sim_voltage_ = motor_info_[0].voltage;
+  if(sim_voltage_ == 0 && !motor_info_.empty())
+    sim_voltage_ = motor_info_[0].voltage;
 #endif
 
 #ifndef SIMULATION
@@ -615,7 +619,7 @@ void AttitudeController::pwmInfoCallback( const spinal::PwmInfo &info_msg)
 #endif
 }
 
-void AttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &gain_msg)
+void RadxaAttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &gain_msg)
 {
   if(motor_number_ == 0) return; //not be activated
 
@@ -676,7 +680,7 @@ void AttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &gain_
 #endif
 }
 
-void AttitudeController::torqueAllocationMatrixInvCallback(const spinal::TorqueAllocationMatrixInv& msg)
+void RadxaAttitudeController::torqueAllocationMatrixInvCallback(const spinal::TorqueAllocationMatrixInv& msg)
 {
   if(motor_number_ == 0 || !start_control_flag_) return;
 
@@ -716,7 +720,7 @@ void AttitudeController::torqueAllocationMatrixInvCallback(const spinal::TorqueA
 #endif
 }
 
-void AttitudeController::thrustGainMapping()
+void RadxaAttitudeController::thrustGainMapping()
 {
   for(int i = 0; i < motor_number_; i++)
     {
@@ -730,7 +734,7 @@ void AttitudeController::thrustGainMapping()
     }
 }
 
-void AttitudeController::maxYawGainIndex()
+void RadxaAttitudeController::maxYawGainIndex()
 {
   float max_yaw_gain = 0;
   max_yaw_term_index_ = -1;
@@ -746,31 +750,61 @@ void AttitudeController::maxYawGainIndex()
     }
 }
 
-void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
+void RadxaAttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
 {
-#ifndef SIMULATION  
-  if(pwm_msg.pwms_length && !pwm_test_flag_)
+#ifdef SIMULATION
+  const std::size_t pwm_count = pwm_msg.pwms.size();
+  const std::size_t index_count = pwm_msg.motor_index.size();
+#else
+  const std::size_t pwm_count = pwm_msg.pwms_length;
+  const std::size_t index_count = pwm_msg.motor_index_length;
+#endif
+
+  if(pwm_count && !pwm_test_flag_)
     {
       pwm_test_flag_ = true;
+#ifdef SIMULATION
+      ROS_WARN("Enter pwm test mode");
+#else
       nh_->logwarn("Enter pwm test mode");
+#endif
     }
-  else if(!pwm_msg.pwms_length && pwm_test_flag_)
+  else if(!pwm_count && pwm_test_flag_)
     {
       pwm_test_flag_ = false;
+#ifdef SIMULATION
+      ROS_WARN("Escape from pwm test mode");
+#else
       nh_->logwarn("Escape from pwm test mode");
+#endif
       return;
     }
 
-  if(pwm_msg.motor_index_length)
+  if(!pwm_count) return;
+
+  if(index_count)
     {
       /*Individual test mode*/
-      if(pwm_msg.motor_index_length != pwm_msg.pwms_length)
+      if(index_count != pwm_count)
         {
+#ifdef SIMULATION
+          ROS_ERROR("The number of index does not match the number of pwms.");
+#else
           nh_->logerror("The number of index does not match the number of pwms.");
+#endif
           return;
         }
-      for(int i = 0; i < pwm_msg.motor_index_length; i++){
+      for(std::size_t i = 0; i < index_count; i++){
         int motor_index = pwm_msg.motor_index[i];
+        if (motor_index < 0 || motor_index >= MAX_MOTOR_NUMBER)
+          {
+#ifdef SIMULATION
+            ROS_ERROR("PWM test motor index %d is out of range", motor_index);
+#else
+            nh_->logerror("PWM test motor index is out of range");
+#endif
+            continue;
+          }
                 /*fail safe*/
         if (pwm_msg.pwms[i] >= IDLE_DUTY && pwm_msg.pwms[i] <= MAX_PWM)
           {
@@ -778,7 +812,11 @@ void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
           }
         else
           {
+#ifdef SIMULATION
+            ROS_WARN("FAIL SAFE! Invalid PWM value for motor");
+#else
             nh_->logwarn("FAIL SAFE!  Invaild PWM value for motor");
+#endif
             pwm_test_value_[motor_index] = IDLE_DUTY;
           }
       }
@@ -794,23 +832,37 @@ void AttitudeController::pwmTestCallback(const spinal::PwmTest& pwm_msg)
           }
         else
           {
+#ifdef SIMULATION
+            ROS_WARN("FAIL SAFE! Invalid PWM value for motors");
+#else
             nh_->logwarn("FAIL SAFE!  Invaild PWM value for motors");
+#endif
             pwm_test_value_[i] = IDLE_DUTY;
           }
       }
     }
-#endif
 }
 
-void AttitudeController::setStartControlFlag(bool start_control_flag)
+void RadxaAttitudeController::setStartControlFlag(bool start_control_flag)
 {
   start_control_flag_ = start_control_flag;
 
   if(!start_control_flag_) reset();
 }
 
-void AttitudeController::setMotorNumber(uint16_t motor_number)
+void RadxaAttitudeController::setMotorNumber(uint16_t motor_number)
 {
+  if (motor_number > MAX_MOTOR_NUMBER)
+    {
+#ifdef SIMULATION
+      ROS_ERROR("motor number %u exceeds controller limit %u",
+                motor_number, MAX_MOTOR_NUMBER);
+#else
+      nh_->logerror("motor number exceeds controller limit");
+#endif
+      return;
+    }
+
   /* check the motor number which has spine system */
   if(motor_number_ > 0)
     {
@@ -846,7 +898,7 @@ void AttitudeController::setMotorNumber(uint16_t motor_number)
     }
 }
 
-void  AttitudeController::setUavModel(int8_t uav_model)
+void  RadxaAttitudeController::setUavModel(int8_t uav_model)
 {
   /* check the uav model which has spine system */
   uav_model_ = uav_model;
@@ -856,7 +908,7 @@ void  AttitudeController::setUavModel(int8_t uav_model)
   }
 }
 
-void AttitudeController::pMatrixInertiaCallback(const spinal::PMatrixPseudoInverseWithInertia& msg)
+void RadxaAttitudeController::pMatrixInertiaCallback(const spinal::PMatrixPseudoInverseWithInertia& msg)
 {
   if(motor_number_ == 0) return;
 
@@ -887,7 +939,7 @@ void AttitudeController::pMatrixInertiaCallback(const spinal::PMatrixPseudoInver
     }
 
   /* inertia */
-  inertia_ = ap::Matrix3f(msg.inertia[0] * 0.001f, msg.inertia[3] * 0.001f, msg.inertia[5] * 0.001f,
+  inertia_ = radxa_ap::Matrix3f(msg.inertia[0] * 0.001f, msg.inertia[3] * 0.001f, msg.inertia[5] * 0.001f,
                           msg.inertia[3] * 0.001f, msg.inertia[1] * 0.001f, msg.inertia[4] * 0.001f,
                           msg.inertia[5] * 0.001f, msg.inertia[4] * 0.001f, msg.inertia[2] * 0.001f);
 
@@ -897,25 +949,44 @@ void AttitudeController::pMatrixInertiaCallback(const spinal::PMatrixPseudoInver
 #endif
 }
 
-void AttitudeController::offsetRotCallback(const spinal::DesireCoord& msg)
+void RadxaAttitudeController::offsetRotCallback(const spinal::DesireCoord& msg)
 {
   offset_rot_.from_euler(msg.roll, msg.pitch, msg.yaw);
 }
 
-bool AttitudeController::activated()
+bool RadxaAttitudeController::activated()
 {
   /* uav model check and motor property */
   if(motor_number_ > 0 && uav_model_ >= spinal::UavInfo::DRONE && max_duty_ > min_duty_) return true;
   else return false;
 }
 
-void AttitudeController::pwmConversion()
+void RadxaAttitudeController::pwmConversion()
 {
   auto convert = [this](float target_thrust)
     {
+      if (!std::isfinite(target_thrust))
+        {
+#ifdef SIMULATION
+          ROS_ERROR_THROTTLE(1.0,
+                             "non-finite target thrust; using DShot stop");
+#endif
+          return IDLE_DUTY;
+        }
+
       float scaled_thrust = v_factor_ * target_thrust / rotor_devider_;
       float target_pwm = 0;
       if (scaled_thrust < 0) scaled_thrust = 0;
+
+      if (!std::isfinite(scaled_thrust))
+        {
+#ifdef SIMULATION
+          ROS_ERROR_THROTTLE(1.0,
+                             "non-finite voltage-compensated thrust; using "
+                             "DShot stop");
+#endif
+          return IDLE_DUTY;
+        }
 
       switch(pwm_conversion_mode_)
         {
@@ -923,7 +994,35 @@ void AttitudeController::pwmConversion()
           {
             /* pwm = F_inv[(V_ref / V)^2 f] */
             float sqrt_tmp = motor_info_[motor_ref_index_].polynominal[1] * motor_info_[motor_ref_index_].polynominal[1] - 4 * 10 * motor_info_[motor_ref_index_].polynominal[2] * (motor_info_[motor_ref_index_].polynominal[0] - scaled_thrust); //special decimal order shift (x10)
-            target_pwm = (-motor_info_[motor_ref_index_].polynominal[1] + sqrt_tmp * ap::inv_sqrt(sqrt_tmp)) / (2 * motor_info_[motor_ref_index_].polynominal[2]);
+            /*
+             * A finite thrust above the calibrated motor curve makes the
+             * discriminant negative.  The old expression then produced NaN,
+             * which the Radxa DShot backend correctly converted to a stop
+             * frame.  Saturate such a request at the configured maximum PWM;
+             * genuinely non-finite inputs remain stopped by the checks above.
+             */
+            if (!std::isfinite(sqrt_tmp)) return IDLE_DUTY;
+            if (sqrt_tmp <= 0)
+              {
+#ifdef SIMULATION
+                ROS_WARN_THROTTLE(
+                  1.0,
+                  "target thrust %.4f N (voltage-compensated %.4f N) "
+                  "exceeds the calibrated motor curve; saturating PWM at "
+                  "%.3f",
+                  target_thrust, scaled_thrust, max_duty_);
+#endif
+                return max_duty_;
+              }
+
+            const float denominator =
+              2 * motor_info_[motor_ref_index_].polynominal[2];
+            if (!std::isfinite(denominator) || fabs(denominator) < 1.0e-9f)
+              return IDLE_DUTY;
+
+            target_pwm =
+              (-motor_info_[motor_ref_index_].polynominal[1] +
+               sqrtf(sqrt_tmp)) / denominator;
             break;
           }
         case spinal::MotorInfo::POLYNOMINAL_MODE:
@@ -942,7 +1041,9 @@ void AttitudeController::pwmConversion()
             break;
           }
         }
-      return target_pwm / 100; // target_pwm is [%]
+      target_pwm /= 100; // target_pwm is [%]
+      if (!std::isfinite(target_pwm)) return IDLE_DUTY;
+      return target_pwm;
     };
 
   if(pwm_test_flag_) /* motor pwm test */
@@ -965,9 +1066,11 @@ void AttitudeController::pwmConversion()
       float voltage = bat_->getVoltage();
 #endif
 
+      if (!std::isfinite(voltage) || voltage <= 0) return;
+
       /* find the best reference voltage */
       float min_voltage_diff = 1e6;
-      for(int i = 0; i < motor_info_.size(); i++)
+      for(std::size_t i = 0; i < motor_info_.size(); i++)
         {
           float voltage_diff = fabs(voltage - motor_info_[i].voltage);
           if(min_voltage_diff > voltage_diff)
@@ -988,7 +1091,7 @@ void AttitudeController::pwmConversion()
         case spinal::MotorInfo::POLYNOMINAL_MODE:
           {
             /* pwm = F_inv[(V_ref / V)^1.5 f] */
-            v_factor_ = motor_info_[motor_ref_index_].voltage / voltage * ap::inv_sqrt(voltage / motor_info_[motor_ref_index_].voltage);
+            v_factor_ = motor_info_[motor_ref_index_].voltage / voltage * radxa_ap::inv_sqrt(voltage / motor_info_[motor_ref_index_].voltage);
             break;
           }
         default:
@@ -1008,6 +1111,26 @@ void AttitudeController::pwmConversion()
   float yaw_decreasing_rate = 0;
   float thrust_limit = motor_info_[motor_ref_index_].max_thrust / v_factor_;
 
+  /*
+   * motor_number_ counts virtual thrust components for a gimballed rotor
+   * (e.g. x/z for one-DoF), while the loops below count physical rotors.
+   * Always reduce a physical rotor to the norm of all of its components.
+   * Indexing a component array with the physical rotor index was incorrect
+   * for rotor_coef_ > 1 and could divide by a zero x component at takeoff.
+   */
+  auto componentNorm = [this](const float* terms, int rotor_index)
+    {
+      float squared_norm = 0;
+      const int first = rotor_coef_ * rotor_index;
+      for(int component = 0; component < rotor_coef_; component++)
+        {
+          const float value = terms[first + component];
+          if (!std::isfinite(value)) return 0.0f;
+          squared_norm += value * value;
+        }
+      return sqrtf(squared_norm);
+    };
+
   /* check saturation level 2: z control saturation */
   float max_thrust = 0;
   int max_thrust_index = 0;
@@ -1017,10 +1140,10 @@ void AttitudeController::pwmConversion()
       switch(gimbal_dof_)
         {
         case 2:
-          thrust = ap::pythagorous3(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1], base_thrust_term_[rotor_coef_ * i+2] + roll_pitch_term_[rotor_coef_ *i+2]);
+          thrust = radxa_ap::pythagorous3(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1], base_thrust_term_[rotor_coef_ * i+2] + roll_pitch_term_[rotor_coef_ *i+2]);
           break;
         case 1:
-          thrust = ap::pythagorous2(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1]);
+          thrust = radxa_ap::pythagorous2(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1]);
           break;
         case 0:
           thrust = base_thrust_term_[i] + roll_pitch_term_[i];
@@ -1038,14 +1161,27 @@ void AttitudeController::pwmConversion()
     {
       float residual_term = thrust_limit - max_thrust / rotor_devider_;
 
-      if(residual_term < 0 && base_thrust_term_[max_thrust_index] > 0)
+      const float limiting_base_thrust =
+        componentNorm(base_thrust_term_, max_thrust_index) / rotor_devider_;
+      if(residual_term < 0 && limiting_base_thrust > 1.0e-6f)
         {
-          base_thrust_decreasing_rate = residual_term / (base_thrust_term_[max_thrust_index] / rotor_devider_);
+          base_thrust_decreasing_rate = residual_term / limiting_base_thrust;
+          if(base_thrust_decreasing_rate < -1)
+            base_thrust_decreasing_rate = -1;
+          if(base_thrust_decreasing_rate > 0)
+            base_thrust_decreasing_rate = 0;
           yaw_decreasing_rate = -1; // also, we have to ignore the yaw control
+        }
+      else if(residual_term < 0)
+        {
+          /* No finite base component is available to reduce safely. */
+          base_thrust_decreasing_rate = -1;
+          yaw_decreasing_rate = -1;
         }
       else
         {
-          if(max_yaw_term_index_ != -1 && fabs(base_thrust_term_[0]) > 0 )
+          if(max_yaw_term_index_ != -1 &&
+             componentNorm(base_thrust_term_, 0) > 0)
             {
               /* check saturation level1: yaw control saturation */
               max_thrust = 0;
@@ -1057,10 +1193,10 @@ void AttitudeController::pwmConversion()
                   switch(gimbal_dof_)
                     {
                     case 2:
-                      thrust = ap::pythagorous3(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1], base_thrust_term_[rotor_coef_ * i+2] + roll_pitch_term_[rotor_coef_ *i+2]);
+                      thrust = radxa_ap::pythagorous3(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1], base_thrust_term_[rotor_coef_ * i+2] + roll_pitch_term_[rotor_coef_ *i+2]);
                       break;
                     case 1:
-                      thrust = ap::pythagorous2(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1]);
+                      thrust = radxa_ap::pythagorous2(base_thrust_term_[rotor_coef_ * i] + roll_pitch_term_[rotor_coef_ *i],base_thrust_term_[rotor_coef_ * i+1] + roll_pitch_term_[rotor_coef_ * i+1]);
                       break;
                     case 0:
                       thrust = base_thrust_term_[i] + roll_pitch_term_[i];
@@ -1096,7 +1232,12 @@ void AttitudeController::pwmConversion()
 
               if(residual_term < 0)
                 {
-                  yaw_decreasing_rate = residual_term / (fabs(yaw_term_[thrust_index]) / rotor_devider_);
+                  const float limiting_yaw_thrust =
+                    componentNorm(yaw_term_, thrust_index) / rotor_devider_;
+                  if(limiting_yaw_thrust > 1.0e-6f)
+                    yaw_decreasing_rate = residual_term / limiting_yaw_thrust;
+                  else
+                    yaw_decreasing_rate = -1;
                 }
 
               if(yaw_decreasing_rate < -1) yaw_decreasing_rate = -1;
@@ -1122,14 +1263,14 @@ void AttitudeController::pwmConversion()
             {
             case 2:
               {
-                ap::Vector3f f_i;
+                radxa_ap::Vector3f f_i;
                 f_i.x = target_thrust_[i*3];
                 f_i.y = target_thrust_[i*3+1];
                 f_i.z = target_thrust_[i*3+2];
             
                 float gimbal_candidate_roll = atan2f(-f_i.y, f_i.z);
                 float gimbal_candidate_pitch = atan2f(f_i.x, -f_i.y * sin(gimbal_candidate_roll) + f_i.z * cos(gimbal_candidate_roll));
-                target_thrust_[i] = ap::pythagorous3(f_i.x,f_i.y,f_i.z);
+                target_thrust_[i] = radxa_ap::pythagorous3(f_i.x,f_i.y,f_i.z);
 
                 /* simple lpf */
                 if(std::isfinite(gimbal_candidate_roll) && std::isfinite(gimbal_candidate_pitch)){
@@ -1141,11 +1282,11 @@ void AttitudeController::pwmConversion()
               }
             case 1:
               {
-                ap::Vector3f f_i;
+                radxa_ap::Vector3f f_i;
                 f_i.x = target_thrust_[i*2];
                 f_i.z = target_thrust_[i*2+1];
                 float gimbal_candidate = atan2f(-f_i.x, f_i.z);
-                target_thrust_[i] = ap::pythagorous2(f_i.x,f_i.z);
+                target_thrust_[i] = radxa_ap::pythagorous2(f_i.x,f_i.z);
 
                 /* simple lpf */
                 if(std::isfinite(gimbal_candidate)) target_gimbal_angles_[i] =(target_gimbal_angles_[i]+ gimbal_candidate)/2;

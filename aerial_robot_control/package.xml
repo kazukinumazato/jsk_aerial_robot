@@ -15,6 +15,7 @@
   <depend>aerial_robot_estimation</depend>
   <depend>aerial_robot_model</depend>
   <depend>aerial_robot_msgs</depend>
+  <depend>angles</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>pluginlib</depend>
   <depend>roscpp</depend>

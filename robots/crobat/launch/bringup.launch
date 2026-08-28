@@ -86,7 +86,7 @@
     <arg name="robot_model" value="$(find crobat)/urdf/robot.urdf.xacro" if="$(eval not arg('direct_model') and not arg('simulation') and not arg('full_actuated'))"/>
     <arg name="robot_model" value="$(find crobat)/urdf/robot.gazebo.xacro" if="$(eval not arg('direct_model') and arg('simulation') and not arg('full_actuated'))"/>
     <arg name="robot_model" value="$(find crobat)/urdf/full_actuated.gazebo.xacro" if="$(eval not arg('direct_model') and arg('simulation') and arg('full_actuated'))"/>
-    <arg name="robot_model" value="$(arg serial_robot_model)" if="$(eval not arg('direct_model') and not arg('simulation') and arg('full_actuated') and arg('flight_controller_backend') == 'serial')"/>
+    <arg name="robot_model" value="$(arg serial_robot_model)" if="$(eval not arg('direct_model') and not arg('simulation') and arg('full_actuated') and (arg('flight_controller_backend') == 'spinal' or arg('flight_controller_backend') == 'serial'))"/>
     <arg name="robot_model" value="$(arg radxa_robot_model)" if="$(eval not arg('direct_model') and not arg('simulation') and arg('full_actuated') and arg('flight_controller_backend') == 'radxa')"/>
     <arg name="robot_model" value="$(arg direct_model_name)" if="$(arg direct_model)"/>
     <arg name="robot_ns" value="$(arg robot_ns)" />

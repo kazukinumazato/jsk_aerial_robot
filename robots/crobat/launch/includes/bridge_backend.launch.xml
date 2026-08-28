@@ -9,7 +9,7 @@
   <arg name="udp_port" />
   <arg name="udp_addr" />
 
-  <include file="$(find radxa)/launch/radxa_spinal.launch"
+  <include file="$(find radxa)/launch/radxa.launch"
            if="$(eval arg('backend') == 'radxa')">
     <arg name="namespace" value="" />
     <arg name="config" value="$(arg radxa_config)" />
@@ -18,7 +18,7 @@
   </include>
 
   <include file="$(find spinal)/launch/bridge.launch"
-           if="$(eval arg('backend') == 'serial')">
+           if="$(eval arg('backend') == 'spinal' or arg('backend') == 'serial')">
     <arg name="mode" value="serial" />
     <arg name="serial_port" value="$(arg serial_port)" />
     <arg name="serial_baud" value="$(arg serial_baud)" />

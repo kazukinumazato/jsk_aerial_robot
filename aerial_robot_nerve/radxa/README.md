@@ -1,7 +1,11 @@
-# Cubie A7Z spinal backend
+# Cubie A7Z native flight-controller backend
 
-`radxa_spinal_node` runs the original spinal attitude-control core and the
-hardware backend in one ROS Noetic process. rosserial is not used.
+`radxa_flight_controller_node` runs a Radxa-owned attitude estimator,
+attitude/allocation controller, and Cubie A7Z hardware backend in one ROS
+Noetic process. rosserial is not used. The implementation lives under
+`radxa/include/radxa/control` and `radxa/src/control`; it does not include or
+link Spinal's controller/firmware implementation. The `spinal/*.msg` types are
+retained only as the ROS wire protocol used by the existing PC-side nodes.
 
 Implemented interfaces:
 
@@ -13,16 +17,19 @@ Implemented interfaces:
   estimator;
 - ADS1015 over I2C: divided battery voltage, spinal-compatible filtering, and
   `battery_voltage_status` / `set_adc_scale`;
-- the existing `FlightControl` subscriptions, including `uav_info`,
+- the compatible `RadxaFlightController` subscriptions, including `uav_info`,
   `flight_config_cmd`, `four_axes/command`, `motor_info`, and `pwm_test`.
 
-The native ROS attitude controller is the same spinal PID/allocation core used
-on the MCU. On Radxa, the filtered ADS1015 measurement is injected into its
-thrust-to-PWM voltage compensation. Crobat's `gimbals_ctrl` command is converted
+The native ROS attitude controller is maintained in the Radxa package. Its
+control equations and topic protocol preserve the proven Spinal behavior, but
+the source and build target are independent. The filtered ADS1015 measurement
+is injected into its thrust-to-PWM voltage compensation. Crobat's
+`gimbals_ctrl` command is converted
 by `servo_bridge` to `extra_servo_cmd`, then drives PWM ports 5–8 independently
-of the DShot arm state. Crobat's real-machine `FlightControl.yaml` enables
-`gimbal_calc_in_fc`, so this native attitude loop computes both motor thrust and
-tilt angles; the simulation YAML remains unchanged.
+of the DShot arm state. `gimbal_calc_in_fc` is configured in Crobat's
+real-machine `FlightControl.yaml` and applies equally to the Radxa and Spinal
+backends. Its default value is `false`, so the host controller computes motor
+thrusts and tilt angles and sends the resulting commands to either backend.
 
 Because ordinary PWM provides no position feedback, the Radxa node publishes
 the last commanded servo angles on `servo/states` (50 Hz by default). This is a
@@ -35,12 +42,15 @@ The full-actuated real-machine model is selected with the same `backend`
 argument as `bridge.launch`:
 
 ```bash
-# Original spinal controller over rosserial
-roslaunch crobat bringup.launch full_actuated:=true backend:=serial
+# Original Spinal controller over rosserial
+roslaunch crobat bringup.launch full_actuated:=true backend:=spinal
 
 # Cubie A7Z in-process controller
 roslaunch crobat bringup.launch full_actuated:=true backend:=radxa
 ```
+
+`backend:=serial` remains an alias for `backend:=spinal` for compatibility with
+existing commands.
 
 Starting `crobat bridge.launch` with the Radxa backend keeps DShot stopped and
 averages the stationary gyroscope for three seconds before starting attitude
@@ -100,9 +110,9 @@ working accel/gyro path. Enable it only after confirming address `0x0c` works.
 The ROS backend maps acceleration and angular velocity to Crobat's body frame
 with `imu_axis_sign: [1.0, -1.0, 1.0]`. Magnetometer mapping is independent and
 uses `mag_axis_sign: [1.0, -1.0, -1.0]`, preserving spinal's AK09916 Z
-reversal. The standalone `imu_test` reads the raw driver defaults and does not
-load these YAML mappings; the mapped values are the ones consumed by the
-attitude estimator in `radxa_spinal_node`.
+reversal. The standalone `imu_test` loads the same YAML by default, so its
+mapped values match the ones consumed by the attitude estimator in
+`radxa_flight_controller_node`.
 
 The ADS1015 board is not a high-voltage input. Add an external divider:
 
@@ -135,7 +145,6 @@ docker compose up -d
 docker compose exec jsk-aerial-robot bash
 source /opt/ros/noetic/setup.bash
 cd /root/ros/jsk_aerial_robot_ws
-catkin config --cmake-args -DSPINAL_BUILD_MCU_ROS_LIB=OFF
 catkin build spinal radxa
 source devel/setup.bash
 roslaunch crobat bridge.launch
@@ -150,6 +159,9 @@ Remove every propeller and power motors from a current-limited supply.
 
 ```bash
 # ICM-20948 values (Ctrl-C to stop)
+# Uses i2c_device and imu_address from config/cubie_a7z.yaml.
+rosrun radxa imu_test
+# Optional one-shot overrides retain the old argument order:
 rosrun radxa imu_test /dev/i2c-2 0x69
 rosrun radxa adc_test /dev/i2c-2 0x48 0 11.0 20
 
