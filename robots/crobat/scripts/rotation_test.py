@@ -63,14 +63,14 @@ def main():
     rate_hz = float(rospy.get_param("~rate_hz", 100.0))
 
     # roll params
-    roll_min    = float(rospy.get_param("~roll_min", -0.3))
-    roll_max    = float(rospy.get_param("~roll_max",  0.3))
-    roll_period = float(rospy.get_param("~roll_period", 30.0))
+    roll_min    = float(rospy.get_param("~roll_min", -0.5))
+    roll_max    = float(rospy.get_param("~roll_max",  0.5))
+    roll_period = float(rospy.get_param("~roll_period", 35.0))
     roll_phase  = float(rospy.get_param("~roll_phase", 0.0))
 
     # pitch params
-    pitch_min    = float(rospy.get_param("~pitch_min", -0.3))
-    pitch_max    = float(rospy.get_param("~pitch_max",  0.3))
+    pitch_min    = float(rospy.get_param("~pitch_min", -0.5))
+    pitch_max    = float(rospy.get_param("~pitch_max",  0.5))
     pitch_period = float(rospy.get_param("~pitch_period", 20.0))
     pitch_phase  = float(rospy.get_param("~pitch_phase", 0.0))
 
@@ -84,7 +84,7 @@ def main():
     # fallback position hold
     hold_x = float(rospy.get_param("~hold_x", 0.0))
     hold_y = float(rospy.get_param("~hold_y", 0.0))
-    hold_z = float(rospy.get_param("~hold_z", 0.3))
+    hold_z = float(rospy.get_param("~hold_z", 0.7))
 
     disable_mode = pick_disable_mode()
 
@@ -92,7 +92,7 @@ def main():
     rate = rospy.Rate(rate_hz)
 
     start_time = rospy.Time.now()
-    target_travel = 2.0 * np.pi  # 1 revolutions
+    target_travel = 4.0 * np.pi  # 2 revolutions
     rospy.loginfo("Started. yaw_rate=%.3f rad/s. Stop after 2 rev (travel=4π). Then reset roll/pitch over %.2f s.",
                   yaw_rate, reset_duration)
 
@@ -138,7 +138,7 @@ def main():
         nav_pub.publish(msg)
 
         if yaw_travel >= target_travel:
-            rospy.loginfo("1 yaw revolutions reached (travel=%.3f rad). Entering reset.", yaw_travel)
+            rospy.loginfo("2 yaw revolutions reached (travel=%.3f rad). Entering reset.", yaw_travel)
             break
 
         rate.sleep()
