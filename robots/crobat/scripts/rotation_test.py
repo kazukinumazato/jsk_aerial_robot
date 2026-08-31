@@ -63,14 +63,14 @@ def main():
     rate_hz = float(rospy.get_param("~rate_hz", 100.0))
 
     # roll params
-    roll_min    = float(rospy.get_param("~roll_min", -0.5))
-    roll_max    = float(rospy.get_param("~roll_max",  0.5))
+    roll_min    = float(rospy.get_param("~roll_min", -0.4))
+    roll_max    = float(rospy.get_param("~roll_max",  0.4))
     roll_period = float(rospy.get_param("~roll_period", 35.0))
     roll_phase  = float(rospy.get_param("~roll_phase", 0.0))
 
     # pitch params
-    pitch_min    = float(rospy.get_param("~pitch_min", -0.5))
-    pitch_max    = float(rospy.get_param("~pitch_max",  0.5))
+    pitch_min    = float(rospy.get_param("~pitch_min", -0.4))
+    pitch_max    = float(rospy.get_param("~pitch_max",  0.4))
     pitch_period = float(rospy.get_param("~pitch_period", 20.0))
     pitch_phase  = float(rospy.get_param("~pitch_phase", 0.0))
 
@@ -92,7 +92,7 @@ def main():
     rate = rospy.Rate(rate_hz)
 
     start_time = rospy.Time.now()
-    target_travel = 4.0 * np.pi  # 2 revolutions
+    target_travel = 2.0 * np.pi  # 2 revolutions
     rospy.loginfo("Started. yaw_rate=%.3f rad/s. Stop after 2 rev (travel=4π). Then reset roll/pitch over %.2f s.",
                   yaw_rate, reset_duration)
 
