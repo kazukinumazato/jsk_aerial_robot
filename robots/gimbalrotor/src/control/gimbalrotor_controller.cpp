@@ -280,8 +280,19 @@ namespace aerial_robot_control
   {
     spinal::FourAxisCommand flight_command_data;
 
-    flight_command_data.angles[0] = target_roll_;
-    flight_command_data.angles[1] = target_pitch_;
+    if(gimbal_calc_in_fc_ && !underactuate_)
+      {
+        // A fully actuated vehicle does not derive a target tilt from its
+        // translational acceleration.  Forward the navigation attitude
+        // command instead, relative to the desired CoG coordinate.
+        flight_command_data.angles[0] = target_rpy_.x();
+        flight_command_data.angles[1] = target_rpy_.y();
+      }
+    else
+      {
+        flight_command_data.angles[0] = target_roll_;
+        flight_command_data.angles[1] = target_pitch_;
+      }
 
     if(gimbal_calc_in_fc_){
       flight_command_data.base_thrust = target_base_thrust_;
