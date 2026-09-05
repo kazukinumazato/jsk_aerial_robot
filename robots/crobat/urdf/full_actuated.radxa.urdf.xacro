@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!-- Radxa Cubie A7Z real-machine description. -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="crobat">
-  <xacro:arg name="base_mass" default="0.0716" />
+  <xacro:arg name="base_mass" default="0.0666" />
   <xacro:arg name="battery_mass" default="0.043" />
   <xacro:arg name="fc_xyz" default="0.000 0.000 0.157" />
   <xacro:arg name="fc_rpy" default="0 0 0" />

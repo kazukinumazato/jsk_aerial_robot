@@ -76,12 +76,31 @@ RUN --mount=type=bind,source=jsk_aerial_robot_ws/src,target=/tmp/ros_src,readonl
       --dependency-types buildtool \
       --dependency-types build_export \
       --dependency-types exec \
+      --dependency-types test \
       --skip-keys "${CROBAT_RADXA_ROSDEP_SKIP_KEYS}" && \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /root/ros/jsk_aerial_robot_ws/src
 
 WORKDIR /root/ros/jsk_aerial_robot_ws
+
+# The Cubie A7Z flight container does not build the optional simulation/GNSS
+# source packages. Keep them out of `catkin build crobat`'s dependency closure,
+# and disable only Crobat's MuJoCo model-generation step. The CMake option stays
+# ON by default outside this image.
+RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
+    catkin config \
+      --extend "/opt/ros/${ROS_DISTRO}" \
+      --skiplist \
+        aerial_robot_simulation \
+        mujoco_ros_control \
+        ntrip_ros \
+        ublox_gps \
+        ublox_msgs \
+        ublox_serialization \
+      --cmake-args \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCROBAT_BUILD_MUJOCO_MODEL=OFF
 
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc && \
     echo "[ -f /root/ros/jsk_aerial_robot_ws/devel/setup.bash ] && source /root/ros/jsk_aerial_robot_ws/devel/setup.bash" >> /root/.bashrc

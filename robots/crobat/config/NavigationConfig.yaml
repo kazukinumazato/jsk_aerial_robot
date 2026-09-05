@@ -13,8 +13,8 @@ navigation:
     "3": 90
     "4": 90
 
-  z_convergent_thresh: 0.15
-  takeoff_height: 0.4 # 1.0
+  z_convergent_thresh: 0.05
+  takeoff_height: 1.0 # 1.0
   outdoor_takeoff_height: 1.5
 
   # teleop operation
@@ -34,3 +34,7 @@ navigation:
   # gps waypoint
   gps_waypoint_threshold: 3.0
   gps_waypoint_check_du: 1.0
+
+  # desire tilt
+  baselink_rot_pub_interval: 0.04
+  baselink_rot_change_thresh: 0.004 # 0.2 hz -> 0.04; 0.01 hz-> 0.02

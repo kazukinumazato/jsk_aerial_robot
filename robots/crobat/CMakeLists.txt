@@ -2,12 +2,20 @@ cmake_minimum_required(VERSION 3.0.2)
 project(crobat)
 add_compile_options(-std=c++17)
 
-find_package(catkin REQUIRED COMPONENTS
-  mujoco_ros_control
+option(CROBAT_BUILD_MUJOCO_MODEL
+  "Generate the Crobat MuJoCo model while building this package" ON)
+
+set(CROBAT_CATKIN_COMPONENTS
   gimbalrotor
   aerial_robot_control
   aerial_robot_model
-  )
+)
+
+if(CROBAT_BUILD_MUJOCO_MODEL)
+  list(APPEND CROBAT_CATKIN_COMPONENTS mujoco_ros_control)
+endif()
+
+find_package(catkin REQUIRED COMPONENTS ${CROBAT_CATKIN_COMPONENTS})
 
 catkin_package(
   INCLUDE_DIRS include
@@ -38,9 +46,11 @@ add_library(crobat_navigation src/crobat_navigation.cpp)
 target_link_libraries(crobat_navigation ${catkin_LIBRARIES} crobat_robot_model)
 
 
-mujoco_model_convert(
-  ${PROJECT_SOURCE_DIR}
-  ${PROJECT_SOURCE_DIR}/config/mujoco_model.yaml)
+if(CROBAT_BUILD_MUJOCO_MODEL)
+  mujoco_model_convert(
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/config/mujoco_model.yaml)
+endif()
 
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
