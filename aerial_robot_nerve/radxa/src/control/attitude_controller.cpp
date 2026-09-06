@@ -649,13 +649,13 @@ void RadxaAttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &
   if(gain_msg.motors_length == 1)
 #endif
     {
-      torque_p_gain_[X] = gain_msg.motors[0].roll_p * 0.001f;
-      torque_p_gain_[Y] = gain_msg.motors[0].pitch_p * 0.001f;
-      torque_i_gain_[X] = gain_msg.motors[0].roll_i * 0.001f;
-      torque_i_gain_[Y] = gain_msg.motors[0].pitch_i * 0.001f;
-      torque_d_gain_[X] = gain_msg.motors[0].roll_d * 0.001f;
-      torque_d_gain_[Y] = gain_msg.motors[0].pitch_d * 0.001f;
-      torque_d_gain_[Z] = gain_msg.motors[0].yaw_d * 0.001f;
+      torque_p_gain_[X] = gain_msg.motors[0].roll_p * 0.01f;
+      torque_p_gain_[Y] = gain_msg.motors[0].pitch_p * 0.01f;
+      torque_i_gain_[X] = gain_msg.motors[0].roll_i * 0.01f;
+      torque_i_gain_[Y] = gain_msg.motors[0].pitch_i * 0.01f;
+      torque_d_gain_[X] = gain_msg.motors[0].roll_d * 0.01f;
+      torque_d_gain_[Y] = gain_msg.motors[0].pitch_d * 0.01f;
+      torque_d_gain_[Z] = gain_msg.motors[0].yaw_d * 0.01f;
 
       thrustGainMapping(); // gain mapping
     }
@@ -663,13 +663,13 @@ void RadxaAttitudeController::rpyGainCallback( const spinal::RollPitchYawTerms &
     {
       for(int i = 0; i < motor_number_; i++)
         {
-          thrust_p_gain_[i][X] = gain_msg.motors[i].roll_p * 0.001f;
-          thrust_i_gain_[i][X] = gain_msg.motors[i].roll_i * 0.001f;
-          thrust_d_gain_[i][X] = gain_msg.motors[i].roll_d * 0.001f;
-          thrust_p_gain_[i][Y] = gain_msg.motors[i].pitch_p * 0.001f;
-          thrust_i_gain_[i][Y] = gain_msg.motors[i].pitch_i * 0.001f;
-          thrust_d_gain_[i][Y] = gain_msg.motors[i].pitch_d * 0.001f;
-          thrust_d_gain_[i][Z] = gain_msg.motors[i].yaw_d * 0.001f;
+          thrust_p_gain_[i][X] = gain_msg.motors[i].roll_p * 0.01f;
+          thrust_i_gain_[i][X] = gain_msg.motors[i].roll_i * 0.01f;
+          thrust_d_gain_[i][X] = gain_msg.motors[i].roll_d * 0.01f;
+          thrust_p_gain_[i][Y] = gain_msg.motors[i].pitch_p * 0.01f;
+          thrust_i_gain_[i][Y] = gain_msg.motors[i].pitch_i * 0.01f;
+          thrust_d_gain_[i][Y] = gain_msg.motors[i].pitch_d * 0.01f;
+          thrust_d_gain_[i][Z] = gain_msg.motors[i].yaw_d * 0.01f;
         }
     }
   maxYawGainIndex();

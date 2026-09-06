@@ -39,8 +39,8 @@ controller:
     need_d_control: true
 
   roll_pitch:
-    p_gain: 30.0 #18.0
-    i_gain: 0.0 #1.0
+    p_gain: 40.0 #18.0
+    i_gain: 4.0 #1.0
     d_gain: 5.5 #8.0
     limit_sum: 1000 #10
     limit_p: 1000 #20

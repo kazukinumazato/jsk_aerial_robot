@@ -126,10 +126,10 @@ bool Icm20948::init()
     return false;
   }
 
-  // Match spinal: gyro +/-2000 dps, accel +/-8 g, with DLPFs enabled.
-  // Gyro DLPFCFG=3 and accel DLPFCFG=6; both sample-rate divisors are zero.
+  // Use spinal's full-scale ranges with both DLPFs enabled.
+  // Gyro DLPFCFG=4 and accel DLPFCFG=6; both sample-rate divisors are zero.
   if (!writeRegister(kBank2, kGyroSampleRateDivider, 0x00) ||
-      !writeRegister(kBank2, kGyroConfig1, 0x1f) ||
+      !writeRegister(kBank2, kGyroConfig1, 0x27) ||
       !writeRegister(kBank2, kAccelSampleRateDivider1, 0x00) ||
       !writeRegister(kBank2, kAccelSampleRateDivider2, 0x00) ||
       !writeRegister(kBank2, kAccelConfig, 0x35)) {
