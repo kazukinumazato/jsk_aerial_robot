@@ -6,7 +6,6 @@
 import rospy
 
 from aerial_robot_msgs.msg import FlightNav
-from nav_msgs.msg import Odometry
 
 
 def lerp(start, end, fraction):
@@ -34,6 +33,9 @@ def make_nav_message(x, y, h, vx, vy, roll, pitch):
     msg.target_roll = roll
     msg.target_pitch = pitch
 
+    msg.yaw_nav_mode = FlightNav.POS_MODE
+    msg.target_yaw = 0.0
+
     return msg
 
 
@@ -42,18 +44,18 @@ def main():
 
     # a: side length [m], b: attitude angle [rad], h: altitude [m]
     a = float(rospy.get_param("~a", 1.0))
-    b = float(rospy.get_param("~b", 0.1))
-    h = float(rospy.get_param("~h", 1.0))
-    flight_time = float(rospy.get_param("~flight_time", 20.0))
+    b = float(rospy.get_param("~b", 0.3))
+    h = float(rospy.get_param("~h", 0.5))
+    edge_duration = float(rospy.get_param("~flight_time", 5.0))
+    t = float(rospy.get_param("~t", 1.0))
     rate_hz = float(rospy.get_param("~rate_hz", 40.0))
     reset_duration = float(rospy.get_param("~reset_duration", 2.0))
 
     nav_pub = rospy.Publisher("/crobat/uav/nav", FlightNav, queue_size=1)
     rate = rospy.Rate(rate_hz)
 
-    odom = rospy.wait_for_message("/crobat/uav/cog/odom", Odometry)
-    start_x = odom.pose.pose.position.x
-    start_y = odom.pose.pose.position.y
+    start_x = - a / 2.0
+    start_y = - a / 2.0
 
     # Position offsets: +y, +x, -y, -x.
     corners = (
@@ -73,7 +75,6 @@ def main():
         (0.0, -b),
     )
 
-    edge_duration = flight_time / 4.0
     speed = a / edge_duration
     velocities = (
         (0.0, speed),
@@ -83,32 +84,44 @@ def main():
     )
 
     start_time = rospy.Time.now()
+    edge_cycle = edge_duration + t
+    square_duration = 4.0 * edge_cycle
 
     rospy.loginfo(
         "Square pose: start=(%.3f, %.3f, %.3f), a=%.3f m, "
-        "b=%.3f rad, flight_time=%.3f s, speed=%.3f m/s",
+        "b=%.3f rad, edge_time=%.3f s, interval=%.3f s, "
+        "square_time=%.3f s, speed=%.3f m/s",
         start_x,
         start_y,
         h,
         a,
         b,
-        flight_time,
+        edge_duration,
+        t,
+        square_duration,
         speed,
     )
 
     while not rospy.is_shutdown():
         elapsed = (rospy.Time.now() - start_time).to_sec()
-        if elapsed >= flight_time:
+        if elapsed >= square_duration:
             break
 
-        edge = min(int(elapsed / edge_duration), 3)
-        fraction = (elapsed - edge * edge_duration) / edge_duration
+        edge = min(int(elapsed / edge_cycle), 3)
+        edge_elapsed = elapsed - edge * edge_cycle
 
-        x = start_x + lerp(corners[edge][0], corners[edge + 1][0], fraction)
-        y = start_y + lerp(corners[edge][1], corners[edge + 1][1], fraction)
-        roll = lerp(attitudes[edge][0], attitudes[edge + 1][0], fraction)
-        pitch = lerp(attitudes[edge][1], attitudes[edge + 1][1], fraction)
-        vx, vy = velocities[edge]
+        if edge_elapsed < edge_duration:
+            fraction = edge_elapsed / edge_duration
+            x = start_x + lerp(corners[edge][0], corners[edge + 1][0], fraction)
+            y = start_y + lerp(corners[edge][1], corners[edge + 1][1], fraction)
+            roll = lerp(attitudes[edge][0], attitudes[edge + 1][0], fraction)
+            pitch = lerp(attitudes[edge][1], attitudes[edge + 1][1], fraction)
+            vx, vy = velocities[edge]
+        else:
+            x = start_x + corners[edge + 1][0]
+            y = start_y + corners[edge + 1][1]
+            roll, pitch = attitudes[edge + 1]
+            vx, vy = 0.0, 0.0
 
         nav_pub.publish(make_nav_message(x, y, h, vx, vy, roll, pitch))
         rate.sleep()
